@@ -505,6 +505,7 @@ function showFeedback(answer, correct, reason) {
     return;
   }
 
+  flashWrong();
   elements.feedbackBox.parentElement.classList.add("is-visible");
 
   if (reason === "timeout") {
@@ -552,9 +553,17 @@ function flashCorrect() {
     button.classList.add("correct", "flash");
   }
   if (elements.wordStage) {
-    elements.wordStage.classList.remove("stage-flash");
+    elements.wordStage.classList.remove("stage-flash", "stage-flash-wrong");
     void elements.wordStage.offsetWidth;
     elements.wordStage.classList.add("stage-flash");
+  }
+}
+
+function flashWrong() {
+  if (elements.wordStage) {
+    elements.wordStage.classList.remove("stage-flash", "stage-flash-wrong");
+    void elements.wordStage.offsetWidth;
+    elements.wordStage.classList.add("stage-flash-wrong");
   }
 }
 
@@ -641,6 +650,9 @@ function clearButtonStates() {
     button.classList.remove("correct", "wrong", "shake", "flash");
   });
   elements.timerBar.classList.remove("timeout-pulse");
+  if (elements.wordStage) {
+    elements.wordStage.classList.remove("stage-flash", "stage-flash-wrong");
+  }
 }
 
 function renderStats() {

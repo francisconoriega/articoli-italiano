@@ -665,7 +665,13 @@ kbd {
 }
 
 .word-stage.stage-flash {
+  --flash-color: 37, 111, 91;
   animation: stageFlash 420ms ease;
+}
+
+.word-stage.stage-flash-wrong {
+  --flash-color: 179, 66, 53;
+  animation: stageFlash 420ms ease, shakeWrong 280ms ease;
 }
 
 @keyframes shakeWrong {
@@ -687,8 +693,14 @@ kbd {
 }
 
 @keyframes stageFlash {
-  0%, 100% { box-shadow: 0 0 0 rgba(37, 111, 91, 0); }
-  45% { box-shadow: 0 0 0 5px rgba(37, 111, 91, 0.18); }
+  0%, 100% {
+    box-shadow: 0 0 0 rgba(var(--flash-color), 0), inset 0 0 0 1000px rgba(var(--flash-color), 0);
+    border-color: var(--line);
+  }
+  45% {
+    box-shadow: 0 0 0 6px rgba(var(--flash-color), 0.25), inset 0 0 0 1000px rgba(var(--flash-color), 0.12);
+    border-color: rgb(var(--flash-color));
+  }
 }
 
 .small-copy {
