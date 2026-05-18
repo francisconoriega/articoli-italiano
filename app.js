@@ -3,8 +3,8 @@ const EXPLANATION_RULES = window.EXPLANATION_RULES || {};
 
 const HOTKEYS = {
   "1": "la",
-  "2": "l'",
-  "3": "le",
+  "2": "le",
+  "3": "l'",
   "4": "il",
   "5": "lo",
   "6": "i",
@@ -15,6 +15,7 @@ const STORAGE_KEY = "articoli-italiano-stats-v2";
 const DEFAULT_TIME_LIMIT = 15;
 const MIN_TIME_LIMIT = 5;
 const MAX_TIME_LIMIT = 15;
+const HINT_FADE_TIME_LIMIT = 10;
 
 const elements = {
   sessionAccuracy: document.querySelector("#sessionAccuracy"),
@@ -203,6 +204,14 @@ function updateAdaptiveSpeed(correct) {
 
 function syncTimeLimitControl() {
   elements.timeLimit.value = String(adaptiveTimeLimit);
+  document.documentElement.style.setProperty("--article-hint-alpha", getArticleHintAlpha().toFixed(3));
+}
+
+function getArticleHintAlpha() {
+  const speedRange = MAX_TIME_LIMIT - HINT_FADE_TIME_LIMIT;
+  const slowFactor = speedRange === 0 ? 0 : (adaptiveTimeLimit - HINT_FADE_TIME_LIMIT) / speedRange;
+
+  return Math.max(0, Math.min(1, slowFactor)) * 0.16;
 }
 
 function showFeedback(answer, correct, timedOut) {
