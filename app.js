@@ -1,37 +1,5 @@
-const WORDS = [
-  { id: "libro", word: "libro", translation: "libro", definite: "il", gender: "m", number: "singular" },
-  { id: "studente", word: "studente", translation: "estudiante", definite: "lo", gender: "m", number: "singular" },
-  { id: "zaino", word: "zaino", translation: "mochila", definite: "lo", gender: "m", number: "singular" },
-  { id: "amico", word: "amico", translation: "amigo", definite: "l'", gender: "m", number: "singular" },
-  { id: "albero", word: "albero", translation: "árbol", definite: "l'", gender: "m", number: "singular" },
-  { id: "cane", word: "cane", translation: "perro", definite: "il", gender: "m", number: "singular" },
-  { id: "fiore", word: "fiore", translation: "flor", definite: "il", gender: "m", number: "singular" },
-  { id: "giorno", word: "giorno", translation: "día", definite: "il", gender: "m", number: "singular" },
-  { id: "orologio", word: "orologio", translation: "reloj", definite: "l'", gender: "m", number: "singular" },
-  { id: "psicologo", word: "psicologo", translation: "psicólogo", definite: "lo", gender: "m", number: "singular" },
-  { id: "gnocco", word: "gnocco", translation: "ñoqui", definite: "lo", gender: "m", number: "singular" },
-  { id: "yogurt", word: "yogurt", translation: "yogur", definite: "lo", gender: "m", number: "singular" },
-  { id: "casa", word: "casa", translation: "casa", definite: "la", gender: "f", number: "singular" },
-  { id: "scuola", word: "scuola", translation: "escuela", definite: "la", gender: "f", number: "singular" },
-  { id: "amica", word: "amica", translation: "amiga", definite: "l'", gender: "f", number: "singular" },
-  { id: "isola", word: "isola", translation: "isla", definite: "l'", gender: "f", number: "singular" },
-  { id: "notte", word: "notte", translation: "noche", definite: "la", gender: "f", number: "singular" },
-  { id: "chiave", word: "chiave", translation: "llave", definite: "la", gender: "f", number: "singular" },
-  { id: "arte", word: "arte", translation: "arte", definite: "l'", gender: "f", number: "singular" },
-  { id: "universita", word: "università", translation: "universidad", definite: "l'", gender: "f", number: "singular" },
-  { id: "libri", word: "libri", translation: "libros", definite: "i", gender: "m", number: "plural" },
-  { id: "cani", word: "cani", translation: "perros", definite: "i", gender: "m", number: "plural" },
-  { id: "amici", word: "amici", translation: "amigos", definite: "gli", gender: "m", number: "plural" },
-  { id: "alberi", word: "alberi", translation: "árboles", definite: "gli", gender: "m", number: "plural" },
-  { id: "studenti", word: "studenti", translation: "estudiantes", definite: "gli", gender: "m", number: "plural" },
-  { id: "zaini", word: "zaini", translation: "mochilas", definite: "gli", gender: "m", number: "plural" },
-  { id: "case", word: "case", translation: "casas", definite: "le", gender: "f", number: "plural" },
-  { id: "scuole", word: "scuole", translation: "escuelas", definite: "le", gender: "f", number: "plural" },
-  { id: "amiche", word: "amiche", translation: "amigas", definite: "le", gender: "f", number: "plural" },
-  { id: "isole", word: "isole", translation: "islas", definite: "le", gender: "f", number: "plural" },
-  { id: "arti", word: "arti", translation: "artes", definite: "le", gender: "f", number: "plural" },
-  { id: "chiavi", word: "chiavi", translation: "llaves", definite: "le", gender: "f", number: "plural" }
-];
+const WORDS = window.WORDS || [];
+const EXPLANATION_RULES = window.EXPLANATION_RULES || {};
 
 const HOTKEYS = {
   "1": "la",
@@ -43,7 +11,7 @@ const HOTKEYS = {
   "7": "gli"
 };
 
-const STORAGE_KEY = "articoli-italiano-stats-v1";
+const STORAGE_KEY = "articoli-italiano-stats-v2";
 const DEFAULT_TIME_LIMIT = 15;
 const MIN_TIME_LIMIT = 5;
 const MAX_TIME_LIMIT = 15;
@@ -100,12 +68,18 @@ function saveStats() {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(stats));
 }
 
-function getWordStats(id) {
-  if (!stats[id]) {
-    stats[id] = { seen: 0, correct: 0, wrong: 0, timeouts: 0 };
+function getCardKey(card) {
+  return `${card.groupId}:${card.number}`;
+}
+
+function getWordStats(card) {
+  const key = typeof card === "string" ? card : getCardKey(card);
+
+  if (!stats[key]) {
+    stats[key] = { seen: 0, correct: 0, wrong: 0, timeouts: 0 };
   }
 
-  return stats[id];
+  return stats[key];
 }
 
 function getPrompts() {
@@ -113,7 +87,7 @@ function getPrompts() {
 }
 
 function getWeight(card) {
-  const wordStats = getWordStats(card.id);
+  const wordStats = getWordStats(card);
   const mistakes = wordStats.wrong + wordStats.timeouts;
   const accuracyPenalty = wordStats.seen > 0 ? 1 - wordStats.correct / wordStats.seen : 0.45;
   const freshBoost = wordStats.seen === 0 ? 2 : 1;
@@ -143,6 +117,7 @@ function startCard() {
   acceptingAnswers = true;
   waitingForNext = false;
   clearButtonStates();
+  hideFeedback();
 
   elements.articlePreview.textContent = "?";
   elements.wordPrompt.textContent = currentCard.word;
@@ -189,7 +164,7 @@ function handleAnswer(answer, timedOut = false) {
   cancelAnimationFrame(timerFrame);
 
   const correct = answer === currentCard.answer;
-  const wordStats = getWordStats(currentCard.id);
+  const wordStats = getWordStats(currentCard);
   wordStats.seen += 1;
 
   session.answered += 1;
@@ -233,6 +208,7 @@ function syncTimeLimitControl() {
 function showFeedback(answer, correct, timedOut) {
   elements.articlePreview.textContent = currentCard.answer;
   elements.feedbackBox.className = `feedback ${correct ? "correct" : "wrong"}`;
+  elements.feedbackBox.parentElement.classList.add("is-visible");
 
   if (correct) {
     elements.feedbackBox.textContent = `Correcto: ${currentCard.answer} ${currentCard.word}`;
@@ -254,6 +230,12 @@ function showFeedback(answer, correct, timedOut) {
   });
 }
 
+function hideFeedback() {
+  elements.feedbackBox.className = "feedback neutral";
+  elements.feedbackBox.textContent = "Elige un artículo para empezar.";
+  elements.feedbackBox.parentElement.classList.remove("is-visible");
+}
+
 function showMistakeFeedback(message) {
   elements.feedbackBox.replaceChildren();
 
@@ -262,23 +244,47 @@ function showMistakeFeedback(message) {
 
   const rule = document.createElement("span");
   rule.className = "feedback-rule";
-  rule.textContent = `${getArticleRule(currentCard)} Presiona cualquier tecla para seguir.`;
+  appendFormattedText(rule, `${getArticleRule(currentCard)} Presiona cualquier tecla para seguir.`);
 
   elements.feedbackBox.append(result, rule);
 }
 
 function getArticleRule(card) {
+  if (card.rule && EXPLANATION_RULES[card.rule]) {
+    const explanation = EXPLANATION_RULES[card.rule];
+    return `${explanation.title}: ${explanation.text}`;
+  }
+
   const rules = {
-    il: "Usa il con masculino singular que empieza con consonante común.",
-    lo: "Usa lo con masculino singular que empieza con s + consonante, z, gn, ps, x, y o pn.",
-    "l'": "Usa l' con singular que empieza con vocal, masculino o femenino.",
-    la: "Usa la con femenino singular que empieza con consonante.",
-    i: "Usa i para el plural masculino de palabras que en singular llevan il.",
-    gli: "Usa gli para el plural masculino de palabras que en singular llevan l' o lo.",
-    le: "Usa le para femenino plural."
+    il: "Usa **il** con masculino singular que **empieza con consonante común**.",
+    lo: "Usa **lo** con masculino singular que **empieza con s + consonante, z, gn, ps, x, y o pn**.",
+    "l'": "Usa **l'** con singular que **empieza con vocal**, masculino o femenino.",
+    la: "Usa **la** con femenino singular que **empieza con consonante**.",
+    i: "Usa **i** para el plural masculino de palabras que en singular llevan **il**.",
+    gli: "Usa **gli** para el plural masculino de palabras que en singular llevan **l'** o **lo**.",
+    le: "Usa **le** para **femenino plural**."
   };
 
   return rules[card.answer] || "Revisa género, número y sonido inicial de la palabra.";
+}
+
+function appendFormattedText(element, text) {
+  const parts = text.split(/(\*\*[^*]+\*\*)/g);
+
+  parts.forEach((part) => {
+    if (!part) {
+      return;
+    }
+
+    if (part.startsWith("**") && part.endsWith("**")) {
+      const strong = document.createElement("strong");
+      strong.textContent = part.slice(2, -2);
+      element.append(strong);
+      return;
+    }
+
+    element.append(document.createTextNode(part));
+  });
 }
 
 function clearButtonStates() {
@@ -301,7 +307,7 @@ function renderStats() {
 
   const localAccuracy = totals.seen === 0 ? 0 : Math.round((totals.correct / totals.seen) * 100);
   const weakWords = WORDS
-    .map((word) => ({ ...word, stats: getWordStats(word.id) }))
+    .map((word) => ({ ...word, stats: getWordStats(word) }))
     .filter((word) => word.stats.wrong + word.stats.timeouts > 0)
     .sort((a, b) => {
       const missesA = a.stats.wrong + a.stats.timeouts;
@@ -366,6 +372,19 @@ document.addEventListener("keydown", (event) => {
   }
 });
 
+document.addEventListener("pointerup", (event) => {
+  if (!waitingForNext) {
+    return;
+  }
+
+  if (event.target.closest("button, select, input, label")) {
+    return;
+  }
+
+  event.preventDefault();
+  startCard();
+});
+
 elements.skipButton.addEventListener("click", startCard);
 
 elements.resetButton.addEventListener("click", () => {
@@ -379,8 +398,7 @@ elements.resetButton.addEventListener("click", () => {
   session = { answered: 0, correct: 0, streak: 0 };
   adaptiveTimeLimit = DEFAULT_TIME_LIMIT;
   syncTimeLimitControl();
-  elements.feedbackBox.className = "feedback neutral";
-  elements.feedbackBox.textContent = "Estadísticas reiniciadas.";
+  hideFeedback();
   startCard();
 });
 

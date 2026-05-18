@@ -10,6 +10,11 @@
     <main class="app-shell">
       <section class="practice-panel" aria-labelledby="app-title">
         <header class="topbar">
+          <div class="mobile-flag" aria-hidden="true">
+            <div class="flag-band green"></div>
+            <div class="flag-band white"></div>
+            <div class="flag-band red"></div>
+          </div>
           <div>
             <p class="eyebrow">Italiano · Articoli</p>
             <h1 id="app-title">Practica artículos definidos</h1>
@@ -45,6 +50,12 @@
             <strong id="wordPrompt">parola</strong>
           </div>
           <p id="wordHint" class="hint">Presiona una tecla para elegir el artículo correcto.</p>
+        </section>
+
+        <section class="inline-feedback" aria-label="Última respuesta">
+          <div id="feedbackBox" class="feedback neutral">
+            Elige un artículo para empezar.
+          </div>
         </section>
 
         <section class="controls-row" aria-label="Opciones de práctica">
@@ -100,15 +111,6 @@
 
         <section>
           <div class="panel-heading">
-            <h2>Última respuesta</h2>
-          </div>
-          <div id="feedbackBox" class="feedback neutral">
-            Elige un artículo para empezar.
-          </div>
-        </section>
-
-        <section>
-          <div class="panel-heading">
             <h2>Guía rápida</h2>
           </div>
           <div class="article-guide" aria-label="Guía de artículos definidos">
@@ -134,11 +136,12 @@
             <h2>Banco inicial</h2>
             <span id="wordBankCount">0</span>
           </div>
-          <p class="small-copy">Las palabras viven en <code>app.js</code>. Puedes agregar más con su artículo definido y traducción.</p>
+          <p class="small-copy">Las palabras viven en <code>data.js</code>. Puedes agregar más con su artículo definido, regla y traducción.</p>
         </section>
       </aside>
     </main>
 
+    <script src="data.js"></script>
     <script src="app.js"></script>
   </body>
 </html>

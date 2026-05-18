@@ -334,6 +334,10 @@ kbd {
   overflow: hidden;
 }
 
+.mobile-flag {
+  display: none;
+}
+
 .flag-band.green {
   background: #278267;
 }
@@ -375,7 +379,7 @@ kbd {
 }
 
 .feedback {
-  min-height: 108px;
+  min-height: 92px;
   border-radius: 8px;
   border: 1px solid var(--line);
   padding: 16px;
@@ -386,6 +390,14 @@ kbd {
   gap: 8px;
   font-weight: 800;
   line-height: 1.35;
+}
+
+.inline-feedback {
+  display: none;
+}
+
+.inline-feedback.is-visible {
+  display: flex;
 }
 
 .feedback.neutral {
@@ -406,6 +418,11 @@ kbd {
   color: var(--muted);
   font-size: 0.9rem;
   font-weight: 700;
+}
+
+.feedback-rule strong {
+  color: var(--ink);
+  font-weight: 900;
 }
 
 .article-guide {
@@ -472,8 +489,8 @@ code {
 
 @media (max-width: 680px) {
   .app-shell {
-    width: min(100% - 20px, 1180px);
-    padding: 10px 0;
+    width: min(100% - 16px, 1180px);
+    padding: 8px 0;
   }
 
   .practice-panel,
@@ -481,17 +498,72 @@ code {
     padding: 16px;
   }
 
+  .practice-panel {
+    gap: 16px;
+  }
+
   .topbar {
+    display: grid;
+    grid-template-columns: 1fr auto;
     align-items: flex-start;
+    gap: 12px;
+  }
+
+  h1 {
+    max-width: 320px;
+    font-size: 1.85rem;
+    line-height: 1.06;
+  }
+
+  .eyebrow {
+    margin-bottom: 6px;
+    font-size: 0.72rem;
+  }
+
+  .mobile-flag {
+    width: 70px;
+    height: 30px;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    display: grid;
+    grid-column: 1 / -1;
+    grid-template-columns: repeat(3, 1fr);
+    overflow: hidden;
   }
 
   .session-score {
-    width: 82px;
-    border-width: 8px;
+    width: 74px;
+    border-width: 7px;
+  }
+
+  .session-score span {
+    font-size: 1.1rem;
+  }
+
+  .session-score small {
+    font-size: 0.76rem;
+  }
+
+  .insights-panel .italy-card {
+    display: none;
   }
 
   .status-strip {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  .status-strip div {
+    min-height: 68px;
+    padding: 10px;
+  }
+
+  .status-strip span {
+    font-size: 1.35rem;
+  }
+
+  .status-strip small {
+    font-size: 0.78rem;
   }
 
   .prompt-line {
