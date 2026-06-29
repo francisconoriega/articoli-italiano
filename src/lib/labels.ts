@@ -30,6 +30,32 @@ export function modeLabel(mode: PracticeMode): string {
   return map[mode]
 }
 
+/** Human ES-MX label for a scheduler topic (e.g. "verb:fare" → "verbo fare"). */
+export function topicLabel(topic: string): string {
+  if (topic.startsWith('verb:')) return `verbo ${topic.slice(5)}`
+  if (topic.startsWith('vocab:')) {
+    const c = topic.slice(6)
+    return c === 'body' ? 'partes del cuerpo' : c
+  }
+  if (topic === 'pronoun') return 'pronombres'
+  if (topic === 'exam') return 'frases del examen'
+  const numMap: Record<string, string> = {
+    'num:ones': 'números 1–10',
+    'num:teens': 'números 11–19',
+    'num:tens': 'decenas (20–90)',
+    'num:hundreds': 'centenas',
+    'num:compound': 'números compuestos',
+    'num:ordinal': 'números ordinales',
+  }
+  if (numMap[topic]) return numMap[topic]
+  if (topic.startsWith('article:')) {
+    const rule = topic.slice('article:'.length)
+    if (rule === 'regular') return 'artículos regulares'
+    return `artículos: ${rule.replace(/_/g, ' ')}`
+  }
+  return topic
+}
+
 export function skillLabel(skill: string): string {
   if (skill.startsWith('verb:')) return `verbo ${skill.slice(5)}`
   if (skill.startsWith('person:')) return `persona ${skill.slice(7)}`

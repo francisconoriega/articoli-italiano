@@ -2,6 +2,7 @@
   import { onMount, onDestroy, untrack } from 'svelte'
   import type {
     Item,
+    Person,
     PracticeMode,
     PresentationMode,
     ProgressStore,
@@ -10,17 +11,20 @@
   } from './types'
   import { BLANK } from './types'
   import { PracticeSession, type SessionStats, type SubmitResult } from './engine/session'
+  import { daysUntil, type TopicState, type TopicInfo } from './engine/scheduler'
   import { cardinalLesson } from './engine/numbers'
-  import { explanationRules } from './content'
+  import { explanationRules, catalog } from './content'
   import Practice from './lib/Practice.svelte'
   import Summary from './lib/Summary.svelte'
-  import { skillLabel, itemLabel } from './lib/labels'
+  import ConjugationTable from './lib/ConjugationTable.svelte'
+  import { skillLabel, itemLabel, topicLabel } from './lib/labels'
 
   let { items, store }: { items: Item[]; store: ProgressStore } = $props()
 
   // `items`/`store` are passed once at boot and never change — read them once.
   const session = untrack(() => new PracticeSession(items, store))
   const itemIndex = untrack(() => new Map(items.map((i) => [i.id, i])))
+  const verbByInf = untrack(() => new Map(catalog.verbs.map((v) => [v.infinitive, v])))
   const now = () => Date.now()
 
   // ── Reactive view state ───────────────────────────────────────────────────
@@ -45,6 +49,49 @@
   // Anchored correction banner (top of canvas, ~3s) shown on a miss / "No sé".
   let banner = $state<{ answer: string; before: string; after: string; meaning: string | null; status: 'wrong' | 'near' } | null>(null)
   let bannerTimer = 0
+
+  // ── Scheduler-facing state (mirrored from the session) ─────────────────────
+  let currentTopic = $state<string | null>(null)
+  let isMiniLesson = $state(false)
+  let focusTopic = $state<string | null>(null)
+  let roundReason = $state<'remediation' | 'acquisition' | 'new' | 'review'>('review')
+  let miniDone = $state(0)
+  let miniTotal = $state(0)
+  let topicRows = $state<TopicInfo[]>([])
+  let examDate = $state<string | null>(session.settings.examDate)
+  // One-shot mini-lesson completion beat ("¡Lección completa!").
+  let miniLessonBeat = $state<string | null>(null)
+  let beatTimer = 0
+
+  /** The person being drilled on the current item (for the conjugation sidebar highlight). */
+  function personOfCurrent(item: Item | null): Person | null {
+    if (!item) return null
+    if (item.prompt.person) return item.prompt.person
+    const p = item.skills.find((s) => s.startsWith('person:'))
+    return p ? (p.slice('person:'.length) as Person) : null
+  }
+
+  // The conjugation cheat-sheet to show in the sidebar, or null. Testing-effect rule:
+  // visible during a verb's mini-lesson (acquisition) and in feedback; HIDDEN during an
+  // interleaved review test so retrieval practice isn't short-circuited.
+  const verbTable = $derived.by(() => {
+    if (!current || !currentTopic || !currentTopic.startsWith('verb:')) return null
+    const show = isMiniLesson || phase === 'feedback'
+    if (!show) return null
+    const inf = currentTopic.slice('verb:'.length)
+    const verb = verbByInf.get(inf)
+    const table = verb?.tenses.presente
+    if (!verb || !table) return null
+    return {
+      infinitive: verb.infinitive,
+      gloss: verb.gloss,
+      table,
+      askedPerson: personOfCurrent(current),
+      highlight: phase === 'feedback',
+    }
+  })
+
+  const daysLeft = $derived(daysUntil(examDate, Date.now()))
 
   // ── Timer ─────────────────────────────────────────────────────────────────
   let timerScale = $state(1)
@@ -75,6 +122,22 @@
   }
 
   // ── Helpers ──────────────────────────────────────────────────────────────
+  const STATE_RANK: Record<TopicState, number> = {
+    learning: 0,
+    reviewing: 1,
+    new: 2,
+    mastered: 3,
+    locked: 4,
+  }
+
+  const STATE_LABEL: Record<TopicState, string> = {
+    learning: 'aprendiendo',
+    reviewing: 'repasando',
+    mastered: 'dominado',
+    new: 'nuevo',
+    locked: 'bloqueado',
+  }
+
   function sync() {
     current = session.current
     stats = session.stats()
@@ -83,6 +146,21 @@
     choices = session.currentChoices
     showGloss = session.currentShowGloss
     poolSize = session.poolSize
+
+    // Scheduler-facing state.
+    currentTopic = session.currentTopic
+    isMiniLesson = session.isMiniLesson
+    focusTopic = session.focusTopic
+    roundReason = session.roundReason
+    miniTotal = session.miniLessonTotal
+    miniDone = session.miniLessonDone()
+    examDate = session.settings.examDate
+    // Topics the learner has started, most-active first (learning → reviewing → mastered).
+    topicRows = session
+      .topicProgress(now())
+      .filter((t) => t.seen > 0)
+      .sort((a, b) => STATE_RANK[a.state] - STATE_RANK[b.state] || b.seen / b.total - a.seen / a.total)
+      .slice(0, 8)
     skillRows = Object.entries(session.store.skills)
       .filter(([, p]) => p.seen > 0)
       .map(([skill, p]) => ({ skill, mastery: p.mastery }))
@@ -166,6 +244,24 @@
     }, 3000)
   }
 
+  // ── Mini-lesson completion beat (the motivation half of the blend) ─────────
+  function clearBeat() {
+    if (beatTimer) {
+      clearTimeout(beatTimer)
+      beatTimer = 0
+    }
+    miniLessonBeat = null
+  }
+
+  function setBeat(topic: string) {
+    if (beatTimer) clearTimeout(beatTimer)
+    miniLessonBeat = topicLabel(topic)
+    beatTimer = window.setTimeout(() => {
+      miniLessonBeat = null
+      beatTimer = 0
+    }, 3200)
+  }
+
   function applyResult(r: SubmitResult) {
     clearTimer()
     result = r.result
@@ -180,6 +276,7 @@
           : 'stage-flash-wrong',
     )
     setBanner(r)
+    if (r.miniLessonCompletedTopic) setBeat(r.miniLessonCompletedTopic)
     if (r.roundComplete) {
       endingRound = true
       window.setTimeout(() => {
@@ -247,6 +344,7 @@
     summary = null
     endingRound = false
     clearBanner()
+    clearBeat()
     session.setMode(m, now())
     value = ''
     result = null
@@ -272,11 +370,17 @@
     sync() // re-evaluate the current item's presentation (choice ⇄ type)
   }
 
+  function onSetExamDate(date: string | null) {
+    session.setExamDate(date)
+    examDate = date // the ramp takes effect from the next composed round
+  }
+
   function onReset() {
     if (!window.confirm('¿Borrar todo tu progreso guardado en este navegador? No se puede deshacer.')) return
     summary = null
     endingRound = false
     clearBanner()
+    clearBeat()
     session.resetProgress(now())
     value = ''
     result = null
@@ -292,6 +396,7 @@
     summary = null
     endingRound = false
     clearBanner()
+    clearBeat()
     session.startRound(now())
     value = ''
     result = null
@@ -308,9 +413,16 @@
   // Space is easy to reach with the right hand while the left works the 1–4 keys.
   function onKeydown(e: KeyboardEvent) {
     if (e.metaKey || e.ctrlKey || e.altKey) return
-    if (summary) return // the Summary overlay handles its own keys
-    if (currentMode !== 'choice') return // type mode is handled by the input
     const isSpace = e.key === ' ' || e.code === 'Space'
+    // Round summary: Enter or Space starts the next round (no mouse needed).
+    if (summary) {
+      if (e.key === 'Enter' || isSpace) {
+        e.preventDefault()
+        startNewRound()
+      }
+      return
+    }
+    if (currentMode !== 'choice') return // type mode is handled by the input
     if (phase === 'feedback') {
       if (e.key === 'Enter' || isSpace) {
         e.preventDefault()
@@ -339,6 +451,7 @@
   onDestroy(() => {
     clearTimer()
     clearBanner()
+    clearBeat()
   })
 </script>
 
@@ -362,6 +475,16 @@
     {showGloss}
     {banner}
     {poolSize}
+    miniLesson={{
+      active: isMiniLesson,
+      label: focusTopic ? topicLabel(focusTopic) : null,
+      done: miniDone,
+      total: miniTotal,
+      reason: roundReason,
+    }}
+    beat={miniLessonBeat}
+    {examDate}
+    {daysLeft}
     {onSubmit}
     {onChoose}
     {onDontKnow}
@@ -369,10 +492,21 @@
     {onModeChange}
     {onToggleTimer}
     {onToggleAssist}
+    {onSetExamDate}
     {onReset}
   />
 
   <aside class="insights-panel">
+    {#if verbTable}
+      <ConjugationTable
+        infinitive={verbTable.infinitive}
+        gloss={verbTable.gloss}
+        table={verbTable.table}
+        askedPerson={verbTable.askedPerson}
+        highlight={verbTable.highlight}
+      />
+    {/if}
+
     <div>
       <p class="eyebrow">Progreso</p>
       <h2>A reforzar</h2>
@@ -417,10 +551,24 @@
       {/if}
     {/if}
 
+    {#if topicRows.length}
+      <div>
+        <p class="eyebrow mini">Temas</p>
+        <ul class="topic-list">
+          {#each topicRows as t (t.topic)}
+            <li>
+              <span class="topic-name">{topicLabel(t.topic)}</span>
+              <span class="topic-chip state-{t.state}">{STATE_LABEL[t.state]}</span>
+            </li>
+          {/each}
+        </ul>
+      </div>
+    {/if}
+
     <div class="bank-note">
       <p class="muted small-copy">
-        Modo fácil (opción múltiple) al inicio; cuando dominas algo, pasa a escritura libre.
-        Tu progreso se guarda en este navegador.
+        Lección enfocada + repaso intercalado. Lo que dominas (escribiéndolo) reaparece
+        más espaciado; lo que fallas vuelve pronto. Tu progreso se guarda en este navegador.
       </p>
     </div>
   </aside>
@@ -450,5 +598,51 @@
   .mini {
     margin: 14px 0 6px;
     font-size: 0.72rem;
+  }
+  .topic-list {
+    margin: 12px 0 0;
+    padding: 0;
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .topic-list li {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+  }
+  .topic-name {
+    font-weight: 700;
+    font-size: 0.9rem;
+    overflow-wrap: anywhere;
+  }
+  .topic-chip {
+    flex: 0 0 auto;
+    border-radius: 999px;
+    padding: 2px 9px;
+    font-size: 0.7rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.02em;
+    border: 1px solid var(--line);
+    color: var(--muted);
+    background: var(--panel);
+  }
+  .topic-chip.state-learning {
+    border-color: var(--amber);
+    color: var(--amber-strong);
+    background: var(--amber-soft);
+  }
+  .topic-chip.state-reviewing {
+    border-color: var(--blue);
+    color: var(--blue);
+    background: rgba(2, 132, 199, 0.1);
+  }
+  .topic-chip.state-mastered {
+    border-color: var(--accent);
+    color: var(--accent-strong);
+    background: var(--green-soft);
   }
 </style>

@@ -76,6 +76,8 @@ export class PracticeSession {
   focusTopic: string | null = null
   focusState: TopicState | null = null
   roundReason: RoundPlan['reason'] = 'review'
+  /** Size of this round's mini-lesson block (for the "Lección: x (done/total)" indicator). */
+  miniLessonTotal = 0
 
   // lifetime counters
   answered = 0
@@ -182,6 +184,7 @@ export class PracticeSession {
     this.planItems = plan.items
     this.miniLessonSet = new Set(plan.miniLessonIds)
     this.blockRemaining = new Set(plan.miniLessonIds)
+    this.miniLessonTotal = plan.miniLessonIds.length
     this.focusTopic = plan.focusTopic
     this.focusState = plan.focusState
     this.roundReason = plan.reason
@@ -271,6 +274,17 @@ export class PracticeSession {
   /** Per-topic state rollup for the insights panel (every topic in the active lane). */
   topicProgress(now: number): TopicInfo[] {
     return [...topicInfos(this.pool, this.store, now).values()]
+  }
+
+  /** How many of this round's mini-lesson block items have been answered so far. */
+  miniLessonDone(): number {
+    return this.miniLessonTotal - this.blockRemaining.size
+  }
+
+  /** Set (or clear with null) the OPTIONAL exam date; takes effect from the next round. */
+  setExamDate(examDate: string | null): void {
+    this.store.settings.examDate = examDate
+    saveStore(this.store)
   }
 
   /** Validate and record a typed answer. */

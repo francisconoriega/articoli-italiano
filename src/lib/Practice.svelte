@@ -8,6 +8,13 @@
   import { modeLabel } from './labels'
 
   type Banner = { answer: string; before: string; after: string; meaning: string | null; status: 'wrong' | 'near' }
+  type MiniLesson = {
+    active: boolean
+    label: string | null
+    done: number
+    total: number
+    reason: 'remediation' | 'acquisition' | 'new' | 'review'
+  }
 
   let {
     item,
@@ -26,6 +33,10 @@
     showGloss = true,
     banner = null,
     poolSize,
+    miniLesson,
+    beat = null,
+    examDate = null,
+    daysLeft = null,
     onSubmit,
     onChoose,
     onDontKnow,
@@ -33,6 +44,7 @@
     onModeChange,
     onToggleTimer,
     onToggleAssist,
+    onSetExamDate,
     onReset,
   }: {
     item: Item | null
@@ -51,6 +63,10 @@
     showGloss?: boolean
     banner?: Banner | null
     poolSize: number
+    miniLesson: MiniLesson
+    beat?: string | null
+    examDate?: string | null
+    daysLeft?: number | null
     onSubmit: () => void
     onChoose: (value: string) => void
     onDontKnow: () => void
@@ -58,8 +74,16 @@
     onModeChange: (mode: PracticeMode) => void
     onToggleTimer: (enabled: boolean) => void
     onToggleAssist: (enabled: boolean) => void
+    onSetExamDate: (date: string | null) => void
     onReset: () => void
   } = $props()
+
+  const REASON_LABEL: Record<MiniLesson['reason'], string> = {
+    remediation: 'repaso enfocado',
+    acquisition: 'aprendiendo',
+    new: 'tema nuevo',
+    review: 'repaso',
+  }
 
   const MODES: PracticeMode[] = ['mixed', 'verbs', 'articles', 'numbers', 'vocab']
 </script>
@@ -122,8 +146,37 @@
         />
         Cronómetro
       </label>
+      <label class="toggle-control exam-control">
+        <span>Examen</span>
+        <input
+          type="date"
+          aria-label="Fecha del examen (opcional)"
+          value={examDate ?? ''}
+          onchange={(e) => onSetExamDate(e.currentTarget.value || null)}
+        />
+        {#if daysLeft !== null}
+          <small class="exam-days">{daysLeft === 0 ? 'hoy' : `en ${daysLeft} d`}</small>
+        {/if}
+      </label>
     </div>
   </div>
+
+  {#if beat}
+    <div class="mini-beat" role="status">¡Lección completa: {beat}! 🎉</div>
+  {:else if item && miniLesson.active && miniLesson.label}
+    <div class="mini-indicator" aria-label="Mini-lección en curso">
+      <span class="mini-tag">Lección</span>
+      <strong class="mini-name">{miniLesson.label}</strong>
+      <span class="mini-reason">{REASON_LABEL[miniLesson.reason]}</span>
+      {#if miniLesson.total > 0}
+        <span class="mini-dots" aria-hidden="true">
+          {#each Array(miniLesson.total) as _, i}
+            <span class="dot" class:done={i < miniLesson.done}></span>
+          {/each}
+        </span>
+      {/if}
+    </div>
+  {/if}
 
   {#if item}
     {#if currentMode === 'choice'}
@@ -236,5 +289,95 @@
   }
   .spacer {
     flex: 1 1 auto;
+  }
+
+  /* Exam-date knob (optional) */
+  .exam-control {
+    gap: 6px;
+    font-weight: 700;
+  }
+  .exam-control input[type='date'] {
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    background: var(--panel);
+    padding: 2px 6px;
+    font-size: 0.85rem;
+  }
+  .exam-days {
+    color: var(--accent-strong);
+    font-weight: 800;
+  }
+
+  /* Mini-lesson indicator */
+  .mini-indicator {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+    border: 1px solid var(--accent);
+    background: rgba(37, 111, 91, 0.08);
+    border-radius: var(--radius);
+    padding: 8px 14px;
+  }
+  .mini-tag {
+    font-size: 0.7rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: #fffdf8;
+    background: var(--accent);
+    border-radius: 999px;
+    padding: 2px 10px;
+  }
+  .mini-name {
+    font-size: 1.05rem;
+    font-weight: 800;
+  }
+  .mini-reason {
+    font-size: 0.78rem;
+    font-weight: 700;
+    color: var(--muted);
+    text-transform: lowercase;
+  }
+  .mini-dots {
+    margin-left: auto;
+    display: inline-flex;
+    gap: 5px;
+  }
+  .mini-dots .dot {
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+    border: 1.5px solid var(--accent);
+    background: transparent;
+  }
+  .mini-dots .dot.done {
+    background: var(--accent);
+  }
+
+  /* Mini-lesson completion beat */
+  .mini-beat {
+    border-radius: var(--radius);
+    padding: 10px 16px;
+    font-weight: 900;
+    font-size: 1.05rem;
+    color: var(--accent-strong);
+    background: var(--green-soft);
+    border: 1px solid var(--accent);
+    text-align: center;
+    animation: beatPop 320ms ease;
+  }
+  @keyframes beatPop {
+    0% {
+      transform: scale(0.96);
+      opacity: 0;
+    }
+    60% {
+      transform: scale(1.02);
+    }
+    100% {
+      transform: scale(1);
+      opacity: 1;
+    }
   }
 </style>
