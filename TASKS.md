@@ -26,6 +26,10 @@ Architecture: strict `content/` → `engine/` → `lib/` separation; contract in
 
 ## Phase 1B — NEXT
 
+- [ ] **Adaptive study scheduler ("the tutor")** — two-level topic scheduler, spaced repetition (decay),
+      a session composer (focused mini-lessons + interleaved spaced review, 50/50), weak-remediation,
+      and the conjugation-table sidebar. **The next big build** (subsumes Exam-Drill; pulls Phase-2
+      SRS/dashboard forward). See **[claude-SCHEDULER-BRIEF.md](claude-SCHEDULER-BRIEF.md)**.
 - [ ] **Ex2 — gender/number endings** (agreement lane). See **[claude-EX2-BRIEF.md](claude-EX2-BRIEF.md)**.
 - [ ] **Export / import** progress JSON (merge by recency; the structure is in `ProgressStore`).
 - [ ] **Exam-Drill mode** — compose a round in sample-test proportions (verbs ~35% / articles ~15%
