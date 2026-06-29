@@ -114,13 +114,24 @@ function isElision(n: number): boolean {
 /**
  * Finer number band used as the scheduler topic (distinct from the skill subskill):
  * ones (1–10), teens (11–19), tens (round 20–90), hundreds (round 100s), compound (rest).
+ * Compounds split by the elision rule (…uno/…otto drop the tens' vowel) vs plain, so a
+ * mini-lesson teaches the hard exception as its own coherent unit instead of one 27-item bag.
  */
 function numberBand(n: number): string {
   if (n % 100 === 0) return 'num:hundreds' // 100, 200, … (check first so 100 ≠ ones)
   if (n <= 10) return 'num:ones'
   if (n <= 19) return 'num:teens'
   if (n % 10 === 0) return 'num:tens' // 20, 30, … 90
-  return 'num:compound' // 21–99 non-round, e.g. 27, 38
+  return isElision(n) ? 'num:compound:elision' : 'num:compound:plain' // 21–99 non-round + larger
+}
+
+/**
+ * Ordinal band used as the scheduler topic: 1°–10° are irregular base forms learned
+ * individually (primo…decimo); 11°+ follow the regular -esimo pattern (drop the final
+ * vowel + "esimo"). Two coherent lessons instead of one 30-item bag.
+ */
+function ordinalBand(n: number): string {
+  return n <= 10 ? 'num:ordinal:base' : 'num:ordinal:esimo'
 }
 
 /* ── Per-source generators ──────────────────────────────────────────────────── */
@@ -131,7 +142,10 @@ function nounToItems(noun: NounEntry): Item[] {
   const baseWeight = noun.examWeight ?? exceptionWeight
   // Carry the grammar rule key on the items so feedback can surface the explanation.
   const exTags = noun.rule ? ['exception', `rule:${noun.rule}`] : undefined
-  const topic = noun.rule ? `article:${noun.rule}` : 'article:regular'
+  // Standard nouns (no special initial rule) split by gender so the mini-lesson teaches
+  // masculine (il/i/un) and feminine (la/le/una) forms as separate coherent units rather
+  // than one 81-item bag; nouns with a rule keep their rule topic (already coherent).
+  const topic = noun.rule ? `article:${noun.rule}` : `article:regular:${noun.gender}`
 
   // Definite — singular & plural
   const definites: Array<{ suffix: 'sing' | 'plur'; surface: string; article: string }> = [
@@ -266,7 +280,7 @@ function numbersToItems(ranges: NumberRange[]): Item[] {
     items.push({
       id: `number:ord:${n}`,
       kind: 'number',
-      topic: 'num:ordinal',
+      topic: ordinalBand(n),
       prompt: { text: '', figure: n, hint: 'número ordinal en italiano (p. ej. 1° → primo)', badges: ['Ordinal'] },
       answer: numberToOrdinal(n),
       skills: ['number:ordinal'],

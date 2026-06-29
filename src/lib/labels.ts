@@ -52,13 +52,17 @@ export function topicLabel(topic: string): string {
     'num:teens': 'números 11–19',
     'num:tens': 'decenas (20–90)',
     'num:hundreds': 'centenas',
-    'num:compound': 'números compuestos',
-    'num:ordinal': 'números ordinales',
+    'num:compound:elision': 'compuestos con elisión (…uno/…otto)',
+    'num:compound:plain': 'números compuestos',
+    'num:ordinal:base': 'ordinales 1°–10°',
+    'num:ordinal:esimo': 'ordinales (-esimo)',
   }
   if (numMap[topic]) return numMap[topic]
   if (topic.startsWith('article:')) {
     const rule = topic.slice('article:'.length)
     if (rule === 'regular') return 'artículos regulares'
+    if (rule === 'regular:m') return 'artículos regulares (masculinos)'
+    if (rule === 'regular:f') return 'artículos regulares (femeninos)'
     // Rule ids (e.g. "vowel_m") are internal/English — show the Spanish title.
     const title = explanationRules[rule]?.title
     return title ? `artículos: ${title}` : `artículos: ${rule.replace(/_/g, ' ')}`

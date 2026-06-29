@@ -277,20 +277,20 @@ console.log('\n── 7. Lock gate + exam-survival carve-out')
 {
   const store = freshStore()
   const infos = topicInfos(MIXED, store, NOW)
-  const compound = infos.get('num:compound')
-  assert('7a num:compound reported in topicInfos', compound !== undefined)
-  assert(`7b num:compound state === 'locked' (got ${compound?.state})`, compound?.state === 'locked')
+  const compound = infos.get('num:compound:plain')
+  assert('7a num:compound:plain reported in topicInfos', compound !== undefined)
+  assert(`7b num:compound:plain state === 'locked' (got ${compound?.state})`, compound?.state === 'locked')
 
   // Find an exam-weight compound item (e.g. 27 or 38) and confirm it can appear despite the lock.
   const examCompound = MIXED.find(
-    (i) => i.topic === 'num:compound' && i.examWeight >= 2 && (i.prompt.figure === 27 || i.prompt.figure === 38),
+    (i) => i.topic.startsWith('num:compound') && i.examWeight >= 2 && (i.prompt.figure === 27 || i.prompt.figure === 38),
   )
   assert('7c an exam-weight compound (27/38) exists', examCompound !== undefined)
   if (examCompound) {
     // Restrict the pool so the carve-out item is the obvious draw; large round to force inclusion.
     const carvePool = [
       examCompound,
-      ...topicItems(MIXED, 'num:compound'), // includes locked, non-exam compounds
+      ...MIXED.filter((i) => i.topic.startsWith('num:compound')), // includes locked, non-exam compounds
     ]
     // De-dup
     const seen = new Set<string>()

@@ -58,6 +58,8 @@
   let roundReason = $state<'remediation' | 'acquisition' | 'new' | 'review'>('review')
   let miniDone = $state(0)
   let miniTotal = $state(0)
+  let miniPart = $state(0)
+  let miniParts = $state(0)
   let topicRows = $state<TopicInfo[]>([])
   let examDate = $state<string | null>(session.settings.examDate)
   // One-shot mini-lesson completion beat ("¡Lección completa!").
@@ -165,6 +167,8 @@
     roundReason = session.roundReason
     miniTotal = session.miniLessonTotal
     miniDone = session.miniLessonDone()
+    miniPart = session.miniLessonPart
+    miniParts = session.miniLessonParts
     examDate = session.settings.examDate
     // Topics the learner has started, most-active first (learning → reviewing → mastered).
     topicRows = session
@@ -529,6 +533,8 @@
       label: focusTopic ? topicLabel(focusTopic) : null,
       done: miniDone,
       total: miniTotal,
+      part: miniPart,
+      parts: miniParts,
       reason: roundReason,
     }}
     beat={miniLessonBeat}
