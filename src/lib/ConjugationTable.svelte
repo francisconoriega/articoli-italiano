@@ -1,6 +1,7 @@
 <script lang="ts">
   import type { Person } from '../types'
   import { PERSONS } from '../types'
+  import { stressSplit } from '../engine/stress'
 
   let {
     infinitive,
@@ -42,6 +43,7 @@
   <ul class="person-list" role="list">
     {#each PERSONS as person}
       {@const isAsked = person === askedPerson}
+      {@const stress = stressSplit(infinitive, person, table[person])}
       <li
         class="person-row"
         class:is-asked={isAsked}
@@ -49,7 +51,11 @@
         aria-current={isAsked ? 'true' : undefined}
       >
         <span class="pronoun">{LABELS[person]}</span>
-        <span class="form" class:form-highlight={isAsked && highlight}>{table[person]}</span>
+        <span class="form" class:form-highlight={isAsked && highlight}>
+          {#if stress}{stress.pre}<span class="stress">{stress.vowel}</span>{stress.post}{:else}{table[
+              person
+            ]}{/if}
+        </span>
       </li>
     {/each}
   </ul>
@@ -150,5 +156,13 @@
   .form.form-highlight {
     font-weight: 900;
     color: var(--accent-strong);
+  }
+
+  /* Sílaba tónica — underline the stressed vowel (pronunciation aid). */
+  .stress {
+    text-decoration: underline;
+    text-decoration-thickness: 2px;
+    text-underline-offset: 2px;
+    text-decoration-color: var(--accent);
   }
 </style>
