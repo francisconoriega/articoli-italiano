@@ -1,6 +1,7 @@
 /** Human-friendly ES-MX labels for practice modes, skill buckets, and items. */
 import type { Item, PracticeMode } from '../types'
 import { BLANK } from '../types'
+import { explanationRules } from '../content/articles'
 
 /** Compact, concrete label for an item in the "weak words" list. */
 export function itemLabel(item: Item): string {
@@ -51,7 +52,9 @@ export function topicLabel(topic: string): string {
   if (topic.startsWith('article:')) {
     const rule = topic.slice('article:'.length)
     if (rule === 'regular') return 'artículos regulares'
-    return `artículos: ${rule.replace(/_/g, ' ')}`
+    // Rule ids (e.g. "vowel_m") are internal/English — show the Spanish title.
+    const title = explanationRules[rule]?.title
+    return title ? `artículos: ${title}` : `artículos: ${rule.replace(/_/g, ' ')}`
   }
   return topic
 }
@@ -84,7 +87,10 @@ export function skillLabel(skill: string): string {
     if (n === 'elision') return 'excepciones (elisión)'
     return `números (${n})`
   }
-  if (skill.startsWith('vocab:')) return skill.slice(6)
+  if (skill.startsWith('vocab:')) {
+    const c = skill.slice(6)
+    return c === 'body' ? 'partes del cuerpo' : c
+  }
   if (skill.startsWith('idiom:')) return `modismo ${skill.slice(6).replace(/-/g, ' ')}`
   if (skill === 'essere') return 'verbo essere'
   if (skill === 'avere') return 'verbo avere'
