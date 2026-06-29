@@ -6,6 +6,7 @@
   "description": "Adaptive, exam-focused Italian study tool (Nuovissimo Progetto Italiano 1).",
   "scripts": {
     "dev": "vite",
+    "dev:test": "VITE_CLAUDE_TEST=1 vite",
     "build": "vite build",
     "preview": "vite preview",
     "check": "svelte-check --tsconfig ./tsconfig.app.json && tsc -p tsconfig.node.json"

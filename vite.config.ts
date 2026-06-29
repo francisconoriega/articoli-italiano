@@ -59,6 +59,12 @@ function devProgressSync(): PluginOption {
   }
 }
 
+// Whole-instance test mode (`VITE_CLAUDE_TEST=1 npm run dev:test`): the client already
+// isolates itself (engine/testMode.ts reads VITE_CLAUDE_TEST), but we ALSO drop the
+// `/__progress` broker so this server physically CANNOT read or write the user's real
+// shared file — defence in depth, immune to any URL/reload mishap.
+const TEST_INSTANCE = process.env.VITE_CLAUDE_TEST === '1' || process.env.VITE_CLAUDE_TEST === 'true'
+
 // Environment-dependent base:
 //  - dev (`npm run dev`)   -> '/'                    (frictionless http://localhost:5173/)
 //  - prod (`npm run build`) -> '/articoli-italiano/' (assets resolve under the GitHub Pages subpath)
@@ -68,5 +74,5 @@ export default defineConfig(({ command }) => ({
   // Expose the dev server on the LAN (accessible via the machine's IP, e.g. for phone testing).
   // Honor a PORT env var (preview tooling assigns one) but default to vite's 5173.
   server: { host: true, port: Number(process.env.PORT) || 5173 },
-  plugins: [svelte(), devProgressSync()],
+  plugins: [svelte(), ...(TEST_INSTANCE ? [] : [devProgressSync()])],
 }))

@@ -329,6 +329,12 @@ export interface ProgressStore {
 /** Schema version for `ProgressStore`. Bump + migrate when the shape changes. */
 export const SCHEMA_VERSION = 1;
 export const STORAGE_KEY = 'articoli-progreso-v1';
+/**
+ * Isolated key used ONLY in automated-testing mode (`?claude-test`). Keeping it
+ * separate guarantees a test run can never read or overwrite the real progress
+ * under STORAGE_KEY. See engine/testMode.ts.
+ */
+export const TEST_STORAGE_KEY = 'articoli-progreso-test-v1';
 /** Legacy key from the original article-only app, read once for seed migration. */
 export const LEGACY_STORAGE_KEY = 'articoli-italiano-stats-v3';
 export const COURSE_ID = 'npi-1';

@@ -88,6 +88,55 @@ bookmark — never changes.
   The cross-port sync still unifies them via the shared file, but for one stable study origin, run
   the **study** server on 5173 and let extra/throwaway instances take the bumped ports.
 
+## Automated-testing mode
+
+> **How to use it:** [TESTING.md](TESTING.md) is the practical guide (which mode to pick & why).
+> This section is the persistence-layer reference for how it works.
+
+Test mode fully isolates persistence from the user's real study progress — for automated browser
+tests or any throwaway poking around. When ON:
+
+- localStorage uses a **separate test key** (`articoli-progreso-test-v1`); the real
+  `articoli-progreso-v1` is never read or written.
+- The dev cross-port sync is **disabled** (`devSyncEnabled()` returns false), so the shared
+  `~/.articoli-progreso-dev.json` is **never touched** — no GET, no POST.
+- A red `🧪 MODO PRUEBA` banner and a `console.warn` make it obvious; `document.documentElement`
+  gets `data-claude-test="on"` (or `"reset"`) for assertions.
+
+There are **three ways to turn it on** (`src/engine/testMode.ts`, checked in this order):
+
+### 1. Server flag — `npm run dev:test` (recommended for automation)
+
+`npm run dev:test` = `VITE_CLAUDE_TEST=1 vite`. This puts the **whole server instance** in test
+mode regardless of URL, exposed to the client via `import.meta.env.VITE_CLAUDE_TEST`. **Robust:
+it can't be lost to a reload.** The vite config also **drops the `/__progress` broker** for that
+instance, so the server *physically* cannot read or write the real file (a `POST /__progress`
+404s). This is the safe way to point the Claude preview tool at the app — use the **`dev-test`**
+launch.json config. Every tab on this server is isolated; no URL param needed.
+
+### 2. URL param — `?claude-test` (reuse a normal `npm run dev`)
+
+For a one-off safe test on an already-running normal server, without a restart:
+
+| URL | Behaviour |
+|---|---|
+| `localhost:5173/?claude-test` | isolated test store, **persists across reloads** in the session |
+| `localhost:5173/?claude-test=reset` (or `=fresh`) | same, but **wipes the test store on load** — clean slate per run |
+
+### 3. Sticky (automatic) — survives a query-string-dropping reload
+
+The first time `?claude-test` is seen it's mirrored to `sessionStorage`, so test mode **survives a
+reload that drops the query string**. This matters because the Claude preview tooling reloads to
+the base URL (`/`) on snapshots/clicks — without stickiness, a dropped param silently re-enables
+real writes (this caused a real one-item pollution on 2026-06-29, since reverted). `isTestReset()`
+fires only from the live `=reset` URL, never from stickiness, so a mid-test reload keeps the store.
+
+> ⚠️ Even so, for the preview tool **prefer the server flag (`dev:test`)** — it has no URL
+> dependency at all. The URL param + stickiness is best for a plain human browser.
+
+The isolation contract (incl. the sticky regression) is guarded by `scripts/test-mode-harness.ts`
+(`npx tsx scripts/test-mode-harness.ts`, 23 checks).
+
 ## Production (GitHub Pages)
 
 - Single origin → `localStorage` already unifies all visits. `import.meta.env.DEV` is `false`,
@@ -111,3 +160,4 @@ bookmark — never changes.
 | **Production** site, repeat visits (same browser) | ✅ localStorage |
 | **Different device** (phone vs laptop) | ❌ — use Export/Import |
 | `Reiniciar` (one instance) | clears that origin; dev shared file persists until deleted |
+| `?claude-test` (automated testing) | ❌ isolated test key; real progress + shared file untouched |

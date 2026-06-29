@@ -20,6 +20,7 @@ import type {
 
 import {
   STORAGE_KEY,
+  TEST_STORAGE_KEY,
   LEGACY_STORAGE_KEY,
   SCHEMA_VERSION,
   COURSE_ID,
@@ -27,11 +28,22 @@ import {
   DEFAULT_SETTINGS,
 } from '../types';
 
+import { isTestMode, isTestReset } from './testMode';
+
 // ─── helpers ────────────────────────────────────────────────────────────────
 
 /** True when localStorage is available (guards against SSR / worker contexts). */
 function hasStorage(): boolean {
   return typeof localStorage !== 'undefined';
+}
+
+/**
+ * The localStorage key in effect for THIS load/save. Automated-testing mode
+ * (`?claude-test`) redirects to an isolated key so a test run can never touch
+ * the real progress under STORAGE_KEY. See engine/testMode.ts.
+ */
+function activeStorageKey(): string {
+  return isTestMode() ? TEST_STORAGE_KEY : STORAGE_KEY;
 }
 
 /** Clamp a number between lo and hi (inclusive). */
@@ -97,7 +109,20 @@ export function loadStore(): ProgressStore {
     return createStore();
   }
 
-  const raw = localStorage.getItem(STORAGE_KEY);
+  const key = activeStorageKey();
+
+  // ── Automated-testing mode (`?claude-test`) ──
+  // Read/write only the isolated TEST key, never seed from the user's legacy
+  // store, and optionally start from a clean slate (`?claude-test=reset`).
+  if (isTestMode()) {
+    if (isTestReset()) {
+      try { localStorage.removeItem(key); } catch { /* ignore */ }
+    }
+    const raw = localStorage.getItem(key);
+    return raw === null ? createStore() : parseStore(raw);
+  }
+
+  const raw = localStorage.getItem(key);
 
   // ── Case 4: first ever launch under the new key ──
   if (raw === null) {
@@ -107,6 +132,15 @@ export function loadStore(): ProgressStore {
   }
 
   // ── Cases 2 & 3: key exists ──
+  return parseStore(raw);
+}
+
+/**
+ * Parse a stored ProgressStore string, defensively filling any missing top-level
+ * fields from createStore() and normalising schemaVersion. Falls back to a fresh
+ * store on malformed JSON. Shared by the real and test load paths.
+ */
+function parseStore(raw: string): ProgressStore {
   try {
     const parsed: unknown = JSON.parse(raw);
     if (typeof parsed !== 'object' || parsed === null) {
@@ -145,7 +179,7 @@ export function loadStore(): ProgressStore {
 export function saveStore(store: ProgressStore): void {
   if (hasStorage()) {
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(store));
+      localStorage.setItem(activeStorageKey(), JSON.stringify(store));
     } catch (err) {
       console.warn('[storage] saveStore: could not write to localStorage.', err);
     }
@@ -200,6 +234,9 @@ const DEV_SYNC_TIMEOUT_MS = 600;
 /** True ONLY under `vite dev`; false in production builds and in node (tsx harnesses). */
 function devSyncEnabled(): boolean {
   try {
+    // Automated-testing mode must NEVER touch the user's shared study file
+    // (~/.articoli-progreso-dev.json) — neither read it nor mirror to it.
+    if (isTestMode()) return false;
     const env = (import.meta as unknown as { env?: { DEV?: boolean } }).env;
     return env?.DEV === true && typeof fetch !== 'undefined';
   } catch {
