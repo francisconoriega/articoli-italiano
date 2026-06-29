@@ -13,7 +13,9 @@ production**. The data shape itself (`ProgressStore`) is the contract in
   file on disk — so testing in two `npm run dev` instances counts as one study history.
 - **In production** (GitHub Pages) there is a single origin, so plain `localStorage` already
   unifies everything. The dev sync is **completely off** in the build.
-- **Export / Import** (JSON) is the only way to move progress **across devices**.
+- **Study on port `5173`** (the `npm run dev` default) so the origin stays stable across
+  worktrees and your phone bookmark — see "Study on port 5173" below.
+- **Export / Import** (JSON) moves progress **across machines/networks** when the dev sync can't.
 
 ## The data: `ProgressStore`
 
@@ -72,6 +74,19 @@ can't see each other's `localStorage`. **Mechanism:**
 - **Any dev instance with this config joins the shared pool** — including throwaway/test servers.
   Editing `vite.config.ts` hot-reloads a *running* dev server into the sync.
 - It's a **single-user, same-machine** convenience, not a multi-user backend.
+
+### Study on port **5173** (keep the origin stable)
+
+`npm run dev` already defaults to **5173** — `vite.config.ts` uses `Number(process.env.PORT) || 5173`,
+so **any worktree you create off `main` serves study at the same origin**: `http://localhost:5173`
+(and `http://<lan-ip>:5173` for the phone). Always study on 5173 so the origin — and your phone
+bookmark — never changes.
+
+- Only the **preview tooling** (`.claude/launch.json`'s `autoPort`) picks a free port; a plain
+  `npm run dev` you run yourself always tries 5173 first.
+- If a second dev server is already on 5173, vite bumps the next one to 5174 (a *different* origin).
+  The cross-port sync still unifies them via the shared file, but for one stable study origin, run
+  the **study** server on 5173 and let extra/throwaway instances take the bumped ports.
 
 ## Production (GitHub Pages)
 
