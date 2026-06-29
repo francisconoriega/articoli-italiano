@@ -89,9 +89,20 @@ export function buildChoices(
   } else if (item.kind === 'article') {
     candidates = (INDEF_ARTICLES.includes(correct) ? INDEF_ARTICLES : DEF_ARTICLES).slice()
   } else if (item.kind === 'number') {
+    // Distractors are the NUMERICALLY CLOSEST numbers of the same kind — far more
+    // testing than random numbers (27 vs 26/28/37, not 27 vs cento).
     const isOrdinal = item.skills.includes('number:ordinal')
+    const figure = item.prompt.figure ?? 0
     candidates = allItems
-      .filter((i) => i.kind === 'number' && i.skills.includes('number:ordinal') === isOrdinal)
+      .filter(
+        (i) =>
+          i !== item &&
+          i.kind === 'number' &&
+          i.skills.includes('number:ordinal') === isOrdinal &&
+          typeof i.prompt.figure === 'number',
+      )
+      .sort((a, b) => Math.abs((a.prompt.figure as number) - figure) - Math.abs((b.prompt.figure as number) - figure))
+      .slice(0, (count - 1) * 2) // keep only the closest as the distractor pool
       .map((i) => i.answer)
   } else {
     candidates = allItems.filter((i) => i.kind === item.kind).map((i) => i.answer)

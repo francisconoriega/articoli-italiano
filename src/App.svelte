@@ -14,12 +14,13 @@
   import { explanationRules } from './content'
   import Practice from './lib/Practice.svelte'
   import Summary from './lib/Summary.svelte'
-  import { skillLabel } from './lib/labels'
+  import { skillLabel, itemLabel } from './lib/labels'
 
   let { items, store }: { items: Item[]; store: ProgressStore } = $props()
 
   // `items`/`store` are passed once at boot and never change — read them once.
   const session = untrack(() => new PracticeSession(items, store))
+  const itemIndex = untrack(() => new Map(items.map((i) => [i.id, i])))
   const now = () => Date.now()
 
   // ── Reactive view state ───────────────────────────────────────────────────
@@ -38,6 +39,7 @@
   // True between the round-completing answer and the summary overlay appearing.
   let endingRound = $state(false)
   let skillRows = $state<Array<{ skill: string; mastery: number }>>([])
+  let weakItemRows = $state<Array<{ id: string; label: string; misses: number; mastery: number }>>([])
   let poolSize = $state(session.poolSize)
   let showGloss = $state(true)
   // Anchored correction banner (top of canvas, ~3s) shown on a miss / "No sé".
@@ -86,6 +88,16 @@
       .map(([skill, p]) => ({ skill, mastery: p.mastery }))
       .sort((a, b) => a.mastery - b.mastery)
       .slice(0, 6)
+
+    // Concrete "weak words" — the specific items the learner is missing most.
+    const weak: Array<{ id: string; label: string; misses: number; mastery: number }> = []
+    for (const [id, p] of Object.entries(session.store.items)) {
+      if (p.seen === 0 || p.wrong === 0) continue
+      const it = itemIndex.get(id)
+      if (it) weak.push({ id, label: itemLabel(it), misses: p.wrong, mastery: p.mastery })
+    }
+    weak.sort((a, b) => b.misses - a.misses || a.mastery - b.mastery)
+    weakItemRows = weak.slice(0, 6)
   }
 
   function explanationFor(item: Item | null): string {
@@ -353,25 +365,46 @@
   <aside class="insights-panel">
     <div>
       <p class="eyebrow">Progreso</p>
-      <h2>Áreas a reforzar</h2>
+      <h2>A reforzar</h2>
     </div>
 
-    {#if skillRows.length === 0}
-      <p class="muted">Responde algunas preguntas y aquí verás tus puntos débiles por habilidad.</p>
+    {#if weakItemRows.length === 0 && skillRows.length === 0}
+      <p class="muted">Responde algunas preguntas y aquí verás qué reforzar.</p>
     {:else}
-      <ul class="weak-list">
-        {#each skillRows as row}
-          <li>
-            <span>
-              <strong>{skillLabel(row.skill)}</strong>
-              <small>dominio {Math.round(row.mastery * 100)}%</small>
-            </span>
-            <div class="mastery-bar" aria-hidden="true">
-              <div class="mastery-fill" style="width: {Math.round(row.mastery * 100)}%"></div>
-            </div>
-          </li>
-        {/each}
-      </ul>
+      {#if weakItemRows.length}
+        <div>
+          <p class="eyebrow mini">Palabras</p>
+          <ul class="weak-list">
+            {#each weakItemRows as row (row.id)}
+              <li>
+                <span>
+                  <strong>{row.label}</strong>
+                  <small>dominio {Math.round(row.mastery * 100)}%</small>
+                </span>
+                <small>{row.misses} error{row.misses === 1 ? '' : 'es'}</small>
+              </li>
+            {/each}
+          </ul>
+        </div>
+      {/if}
+      {#if skillRows.length}
+        <div>
+          <p class="eyebrow mini">Habilidades</p>
+          <ul class="weak-list">
+            {#each skillRows as row}
+              <li>
+                <span>
+                  <strong>{skillLabel(row.skill)}</strong>
+                  <small>dominio {Math.round(row.mastery * 100)}%</small>
+                </span>
+                <div class="mastery-bar" aria-hidden="true">
+                  <div class="mastery-fill" style="width: {Math.round(row.mastery * 100)}%"></div>
+                </div>
+              </li>
+            {/each}
+          </ul>
+        </div>
+      {/if}
     {/if}
 
     <div class="bank-note">
@@ -403,5 +436,9 @@
   }
   .weak-list li {
     align-items: center;
+  }
+  .mini {
+    margin: 14px 0 6px;
+    font-size: 0.72rem;
   }
 </style>

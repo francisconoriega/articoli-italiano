@@ -1,5 +1,22 @@
-/** Human-friendly ES-MX labels for practice modes and skill buckets. */
-import type { PracticeMode } from '../types'
+/** Human-friendly ES-MX labels for practice modes, skill buckets, and items. */
+import type { Item, PracticeMode } from '../types'
+import { BLANK } from '../types'
+
+/** Compact, concrete label for an item in the "weak words" list. */
+export function itemLabel(item: Item): string {
+  if (typeof item.prompt.figure === 'number') {
+    const ordinal = item.skills.includes('number:ordinal')
+    return `${item.prompt.figure}${ordinal ? '°' : ''} → ${item.answer}`
+  }
+  if (item.prompt.lemma) {
+    return `${item.answer} · ${item.prompt.lemma}` // e.g. "faccio · fare"
+  }
+  if (item.kind === 'article') {
+    const noun = item.prompt.text.replace(BLANK, '').trim()
+    return `${item.answer} ${noun}` // e.g. "lo studente"
+  }
+  return item.answer // vocab / pronoun / essere-avere / sentence
+}
 
 export function modeLabel(mode: PracticeMode): string {
   const map: Record<PracticeMode, string> = {
