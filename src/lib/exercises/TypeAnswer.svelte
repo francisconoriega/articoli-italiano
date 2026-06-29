@@ -74,6 +74,9 @@
   {#if showGloss && pv.meaning}
     <div class="prompt-meaning">{pv.meaning}</div>
   {/if}
+  {#if showGloss && pv.translation}
+    <div class="prompt-translation">{pv.translation}</div>
+  {/if}
 
   <!-- TASK (verb conjugation frame) -->
   {#if pv.task}

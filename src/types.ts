@@ -142,6 +142,9 @@ export interface Item {
   accept?: string[];
   /** Small ES-MX gloss shown as an immersive hint. */
   gloss?: string;
+  /** Full ES-MX sentence translation, shown alongside `gloss` when `gloss` is only a
+   *  partial cue (e.g. an idiom). */
+  translation?: string;
   /** Skill-bucket ids this item rolls up into (see SkillId examples). */
   skills: string[];
   /** Source unit for recency weighting (intro = 0, Unità 1 = 1, Unità 2 = 2, …). */
@@ -466,6 +469,10 @@ export interface SentenceEntry {
   lemma?: string;
   person?: Person;
   gloss?: string;
+  /** Full ES-MX translation of the whole sentence. Use ONLY when `gloss` carries a
+   *  partial cue (e.g. an idiom: "avere fame = tener hambre") rather than the full
+   *  sentence meaning — the two then show as separate lines. */
+  translation?: string;
   /** Extra skills beyond what the generator infers from kind/lemma/person. */
   skills?: SkillId[];
   /** Free-form tags carried onto the item, e.g. ["rule:verb_spelling_h"] for feedback. */

@@ -57,6 +57,9 @@
   {#if showGloss && pv.meaning}
     <div class="prompt-meaning">{pv.meaning}</div>
   {/if}
+  {#if showGloss && pv.translation}
+    <div class="prompt-translation">{pv.translation}</div>
+  {/if}
 
   {#if pv.task}
     <div class="prompt-task">{@render line(pv.task.text, false)}</div>

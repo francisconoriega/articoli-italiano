@@ -20,6 +20,9 @@ export interface PromptView {
   task: { text: string; hasBlank: boolean } | null
   /** Spanish meaning under the hero (shown in stage 1). */
   meaning: string | null
+  /** Full Spanish translation of the whole sentence, shown under `meaning` when the
+   *  meaning is only a partial cue (e.g. an idiom). */
+  translation: string | null
   /** Where the answer affordance lives: inline in the hero/task blank, or below. */
   answerSlot: 'hero' | 'task' | 'below'
 }
@@ -36,6 +39,7 @@ export function promptView(item: Item): PromptView {
       hero: { text: ordinal ? `${figure}°` : `${figure}`, hasBlank: false, isFigure: true, tonic: false },
       task: null,
       meaning: null,
+      translation: null,
       answerSlot: 'below',
     }
   }
@@ -50,6 +54,7 @@ export function promptView(item: Item): PromptView {
       hero: { text: item.prompt.lemma.toUpperCase(), hasBlank: false, isFigure: false, tonic: true },
       task: { text: taskText, hasBlank: taskHasBlank },
       meaning: item.gloss ?? null,
+      translation: item.translation ?? null,
       answerSlot: taskHasBlank ? 'task' : 'below',
     }
   }
@@ -66,6 +71,7 @@ export function promptView(item: Item): PromptView {
     hero: { text, hasBlank, isFigure: false, tonic: item.kind === 'article' && oneWord },
     task: null,
     meaning: item.gloss ?? null,
+    translation: item.translation ?? null,
     answerSlot: hasBlank ? 'hero' : 'below',
   }
 }

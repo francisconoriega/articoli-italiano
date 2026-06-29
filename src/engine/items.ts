@@ -380,6 +380,7 @@ function sentenceToItems(entry: SentenceEntry): Item[] {
       answer: entry.answer,
       accept: entry.accept,
       gloss: entry.gloss,
+      translation: entry.translation,
       skills: skills.length ? skills : ['sentence'],
       unit: entry.unit,
       examWeight: entry.examWeight ?? 2,
