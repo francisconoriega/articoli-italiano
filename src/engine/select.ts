@@ -51,6 +51,29 @@ export function scheduleRecentMiss(
   return filtered.slice(0, RECENT_MISS_LIMIT)
 }
 
+/**
+ * With ~RECENT_MISS_CHANCE probability, pick a due recent-miss whose id is in
+ * `poolIds`, isn't the item just shown (`lastId`), and is due (`due <= answered`).
+ * Returns the picked id plus the queue with it removed, or null (no override this draw).
+ *
+ * Extracted so both chooseNext (the weighted fallback) and the session composer can
+ * apply the SAME within-round "missed items come back soon" rule before serving.
+ */
+export function pickRecentMiss(
+  recentMisses: RecentMiss[],
+  poolIds: Set<string>,
+  answered: number,
+  lastId: string | null,
+  random: () => number = Math.random,
+): { id: string; recentMisses: RecentMiss[] } | null {
+  if (recentMisses.length === 0) return null
+  if (random() > RECENT_MISS_CHANCE) return null
+  const idx = recentMisses.findIndex((m) => m.due <= answered && m.id !== lastId && poolIds.has(m.id))
+  if (idx < 0) return null
+  const picked = recentMisses[idx]
+  return { id: picked.id, recentMisses: recentMisses.filter((_, i) => i !== idx) }
+}
+
 export interface ChooseOptions {
   pool: Item[]
   progress: Record<string, ItemProgress>
@@ -73,16 +96,12 @@ export function chooseNext(opts: ChooseOptions): { item: Item | null; recentMiss
 
   if (pool.length === 0) return { item: null, recentMisses }
 
-  // 1) Recent-miss requeue
-  if (recentMisses.length > 0 && random() <= RECENT_MISS_CHANCE) {
-    const poolIds = new Set(pool.map((i) => i.id))
-    const idx = recentMisses.findIndex((m) => m.due <= answered && m.id !== lastId && poolIds.has(m.id))
-    if (idx >= 0) {
-      const picked = recentMisses[idx]
-      recentMisses = recentMisses.filter((_, i) => i !== idx)
-      const item = pool.find((i) => i.id === picked.id) ?? null
-      if (item) return { item, recentMisses }
-    }
+  // 1) Recent-miss requeue (shared rule — see pickRecentMiss).
+  const miss = pickRecentMiss(recentMisses, new Set(pool.map((i) => i.id)), answered, lastId, random)
+  if (miss) {
+    recentMisses = miss.recentMisses
+    const item = pool.find((i) => i.id === miss.id) ?? null
+    if (item) return { item, recentMisses }
   }
 
   // 2) Weighted-random draw

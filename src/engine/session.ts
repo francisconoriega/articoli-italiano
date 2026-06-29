@@ -20,8 +20,9 @@ import type {
 import { checkAnswer } from './validate'
 import { applyAnswer, createItemProgress, rollUpSkill } from './mastery'
 import { saveStore } from './storage'
-import { chooseNext, poolForMode, scheduleRecentMiss, type RecentMiss } from './select'
+import { chooseNext, poolForMode, scheduleRecentMiss, pickRecentMiss, type RecentMiss } from './select'
 import { buildChoices, presentationFor } from './choices'
+import { composeRound, topicInfos, type RoundPlan, type TopicState, type TopicInfo } from './scheduler'
 
 export const ROUND_SIZE = 15
 
@@ -33,6 +34,12 @@ export interface SubmitResult {
   item: Item
   /** True when this answer completed the round. */
   roundComplete: boolean
+  /**
+   * Set to the focus topic when THIS answer finished the round's mini-lesson block
+   * (every block item has now been answered) — the UI shows a completion beat. Null
+   * otherwise.
+   */
+  miniLessonCompletedTopic: string | null
 }
 
 /** A snapshot of round/session stats for the UI to render. */
@@ -58,6 +65,18 @@ export class PracticeSession {
   currentShowGloss = true
   roundSize = ROUND_SIZE
 
+  // ── Scheduler-facing state (mirrored into the UI) ──────────────────────────
+  /** The composed plan for the current round (null before the first round). */
+  plan: RoundPlan | null = null
+  /** The current item's topic (e.g. "verb:fare", "num:tens"), or null. */
+  currentTopic: string | null = null
+  /** True when the current item belongs to this round's mini-lesson block. */
+  isMiniLesson = false
+  /** This round's focus topic / state / reason (from the plan). */
+  focusTopic: string | null = null
+  focusState: TopicState | null = null
+  roundReason: RoundPlan['reason'] = 'review'
+
   // lifetime counters
   answered = 0
   correct = 0
@@ -77,6 +96,19 @@ export class PracticeSession {
   private recentMisses: RecentMiss[] = []
   private lastId: string | null = null
   private startedAt = 0
+
+  // Round plan bookkeeping.
+  /** The composed queue for this round, walked by planIndex. */
+  private planItems: Item[] = []
+  private planIndex = 0
+  /** Ids already served this round (so the plan never re-serves a non-miss item). */
+  private servedIds = new Set<string>()
+  /** This round's lock-filtered pool (for recent-miss validity + weighted fallback). */
+  private roundPool: Item[] = []
+  private roundPoolIds = new Set<string>()
+  /** The mini-lesson block ids; blockRemaining shrinks as they're answered. */
+  private miniLessonSet = new Set<string>()
+  private blockRemaining = new Set<string>()
 
   constructor(allItems: Item[], store: ProgressStore) {
     this.allItems = allItems
@@ -127,29 +159,83 @@ export class PracticeSession {
     this.computePresentation(this.current)
   }
 
-  /** Reset round counters and draw the first item of a new round. */
+  /** Reset round counters, compose a fresh plan, and draw the first item. */
   startRound(now: number): Item | null {
     this.roundAnswered = 0
     this.roundCorrect = 0
     this.roundNear = 0
     this.mistakesBySkill = {}
     this.roundMistakes = []
+
+    // A fresh within-round recent-miss queue so the mini-lesson block isn't pre-empted.
+    this.recentMisses = []
+    this.servedIds = new Set()
+    this.planIndex = 0
+
+    // Lock-filtered pool for recent-miss validity + the weighted fallback.
+    this.roundPool = this.availableFor(now)
+    this.roundPoolIds = new Set(this.roundPool.map((i) => i.id))
+
+    // Compose the round (the scheduler does its own lock filtering on the lane pool).
+    const plan = composeRound(this.pool, this.store, now, this.roundSize)
+    this.plan = plan
+    this.planItems = plan.items
+    this.miniLessonSet = new Set(plan.miniLessonIds)
+    this.blockRemaining = new Set(plan.miniLessonIds)
+    this.focusTopic = plan.focusTopic
+    this.focusState = plan.focusState
+    this.roundReason = plan.reason
+
     return this.next(now)
   }
 
-  /** Draw the next item without touching round counters. */
+  /**
+   * Draw the next item: a within-round recent-miss override first (a missed item
+   * comes back soon — keeps remediation tight), then the next not-yet-served item
+   * from the composed plan (so the mini-lesson block stays contiguous), then a
+   * weighted fallback over the lock-filtered pool if the plan is exhausted.
+   */
   next(now: number): Item | null {
-    const { item, recentMisses } = chooseNext({
-      pool: this.curriculumFilter(this.pool),
-      progress: this.store.items,
-      recentMisses: this.recentMisses,
-      answered: this.answered,
-      lastId: this.lastId,
-      now,
-    })
-    this.recentMisses = recentMisses
+    let item: Item | null = null
+
+    // 1) Recent-miss override.
+    const miss = pickRecentMiss(this.recentMisses, this.roundPoolIds, this.answered, this.lastId)
+    if (miss) {
+      this.recentMisses = miss.recentMisses
+      item = this.roundPool.find((i) => i.id === miss.id) ?? null
+    }
+
+    // 2) Next plan item (skipping anything already served this round).
+    if (!item) {
+      while (this.planIndex < this.planItems.length) {
+        const cand = this.planItems[this.planIndex]
+        this.planIndex += 1
+        if (!this.servedIds.has(cand.id)) {
+          item = cand
+          break
+        }
+      }
+    }
+
+    // 3) Weighted fallback.
+    if (!item) {
+      const res = chooseNext({
+        pool: this.roundPool,
+        progress: this.store.items,
+        recentMisses: this.recentMisses,
+        answered: this.answered,
+        lastId: this.lastId,
+        now,
+      })
+      this.recentMisses = res.recentMisses
+      item = res.item
+    }
+
     this.current = item
     this.startedAt = now
+    if (item) this.servedIds.add(item.id)
+    this.currentTopic = item?.topic ?? null
+    this.isMiniLesson = item ? this.miniLessonSet.has(item.id) : false
     this.computePresentation(item)
     return item
   }
@@ -168,23 +254,23 @@ export class PracticeSession {
     this.currentChoices = this.currentMode === 'choice' ? buildChoices(item, this.allItems, 4) : []
   }
 
-  /** Has the learner reached the round tens / base names well enough for compounds? */
-  private numbersReady(): boolean {
-    const base = this.store.skills['number:base']?.mastery ?? 0
-    const tens = this.store.skills['number:tens']?.mastery ?? 0
-    return base >= 0.5 && tens >= 0.4
+  /**
+   * The lane pool minus currently-locked topics' items (number compounds/hundreds
+   * before their prerequisites are learned), EXCEPT exam-weighted items (>= 2), which
+   * stay reachable for exam survival. This folds the old numbers curriculum gate into
+   * the scheduler's topic locks, so locking lives in one place.
+   */
+  private availableFor(now: number): Item[] {
+    const infos = topicInfos(this.pool, this.store, now)
+    const locked = new Set<string>()
+    for (const info of infos.values()) if (info.state === 'locked') locked.add(info.topic)
+    if (locked.size === 0) return this.pool.slice()
+    return this.pool.filter((i) => !locked.has(i.topic) || i.examWeight >= 2)
   }
 
-  /**
-   * Numbers curriculum gate: until base names + round tens are getting learned, hide
-   * non-exam compound numbers (21, 22, …) so the learner builds the foundation first.
-   * Exam-weighted compounds (27, 38) and every other kind pass through untouched.
-   */
-  private curriculumFilter(pool: Item[]): Item[] {
-    if (this.numbersReady()) return pool
-    return pool.filter(
-      (i) => !(i.kind === 'number' && i.skills.includes('number:compound') && i.examWeight < 2),
-    )
+  /** Per-topic state rollup for the insights panel (every topic in the active lane). */
+  topicProgress(now: number): TopicInfo[] {
+    return [...topicInfos(this.pool, this.store, now).values()]
   }
 
   /** Validate and record a typed answer. */
@@ -255,10 +341,23 @@ export class PracticeSession {
       this.recentMisses = scheduleRecentMiss(this.recentMisses, item.id, this.answered)
     }
 
+    // Mini-lesson completion beat — fires once, when the last block item is answered.
+    let miniLessonCompletedTopic: string | null = null
+    if (this.blockRemaining.has(item.id)) {
+      this.blockRemaining.delete(item.id)
+      if (this.blockRemaining.size === 0) miniLessonCompletedTopic = this.focusTopic
+    }
+
     this.lastId = item.id
     saveStore(this.store)
 
-    return { result, answerResult, item, roundComplete: this.roundAnswered >= this.roundSize }
+    return {
+      result,
+      answerResult,
+      item,
+      roundComplete: this.roundAnswered >= this.roundSize,
+      miniLessonCompletedTopic,
+    }
   }
 
   /** Wipe all saved progress (items, skills, history, counters) and start fresh. */
