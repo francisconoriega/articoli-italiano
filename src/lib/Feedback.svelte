@@ -67,7 +67,14 @@
   {/if}
 
   {#if result && item.gloss}
-    <div class="meaning-line">significado: <strong>{item.gloss}</strong></div>
+    <!-- When a full-sentence translation accompanies it, the gloss is an idiom/
+         expression cue ("avere fame = tener hambre") → label it "expresión:".
+         On its own, the gloss IS the full meaning → "significado:". -->
+    <div class="meaning-line">{item.translation ? 'expresión' : 'significado'}: <strong>{item.gloss}</strong></div>
+  {/if}
+
+  {#if result && item.translation}
+    <div class="meaning-line">traducción: <strong>{item.translation}</strong></div>
   {/if}
 
   {#if explanation}
