@@ -26,12 +26,12 @@
  *
  * `difficulty`, `streak`, `recentLapses`, `lastResult`, `lastSeen`,
  * `averageResponseMs`, and the seen/correct/wrong counters are all fully driven
- * here. `stability`/`due` are given rough, monotonic values now (an expanding
- * review interval on success, reset on lapse) but the real SM-2-style scheduling
- * is Phase 2's job — the UI ignores `due` in 1A.
+ * here. `stability` is a step index into the SRS ladder (see engine/srs.ts) and
+ * `due` is the real epoch-ms next-review timestamp, computed from that step.
  */
 
 import type { Item, ItemProgress, SkillProgress, AnswerResult } from '../types';
+import { nextStabilityStep, dueFromStep, RELAPSE_MS } from './srs';
 
 /* ── Tunable constants ────────────────────────────────────────────────────────
  * Grouped so the model is easy to read and to re-tune in one place. Rationale for
@@ -54,11 +54,6 @@ const HARD_TAG = 'exception';
 const MASTERY_CEILING = 0.99;
 /** … and floored just above 0 (nothing is ever "hopeless"). */
 const MASTERY_FLOOR = 0.05;
-
-/** Day in milliseconds — the unit `stability` is measured in. */
-const MS_PER_DAY = 86_400_000;
-/** Cap the expanding review interval at one year. */
-const MAX_STABILITY_DAYS = 365;
 
 /** EMA weights for the response-time average (new sample gets 30%). */
 const RESPONSE_EMA_PRIOR = 0.7;
@@ -182,11 +177,9 @@ export function applyAnswer(
     // Each success makes the item a touch easier.
     next.difficulty = Math.max(MIN_DIFFICULTY, progress.difficulty - 0.05);
 
-    // Rough expanding interval: grow stability by a mastery-scaled factor
-    // (~1.6×–2.2×), seeding from 1 day on the first success. Phase 2 refines this.
-    const prevStability = progress.stability <= 0 ? 1 : progress.stability;
-    next.stability = Math.min(MAX_STABILITY_DAYS, prevStability * (1.6 + 0.6 * next.mastery));
-    next.due = now + next.stability * MS_PER_DAY;
+    // SRS: advance one step up the spacing ladder; schedule the next review.
+    next.stability = nextStabilityStep(progress.stability, true)
+    next.due = dueFromStep(next.stability, now)
   } else {
     // ── LAPSE (wrong / timeout / dontKnow) ─────────────────────────────────────
     next.wrong = progress.wrong + 1;
@@ -214,9 +207,9 @@ export function applyAnswer(
     // Each lapse makes the item a touch harder.
     next.difficulty = Math.min(MAX_DIFFICULTY, progress.difficulty + 0.15);
 
-    // Reset the interval and resurface the item right away.
-    next.stability = 0;
-    next.due = now;
+    // SRS: drop back down the ladder and resurface almost immediately.
+    next.stability = nextStabilityStep(progress.stability, false)
+    next.due = now + RELAPSE_MS
   }
 
   return next;

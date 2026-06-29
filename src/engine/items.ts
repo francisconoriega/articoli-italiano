@@ -101,6 +101,18 @@ function isElision(n: number): boolean {
   return n >= 20 && (n % 10 === 1 || n % 10 === 8)
 }
 
+/**
+ * Finer number band used as the scheduler topic (distinct from the skill subskill):
+ * ones (1–10), teens (11–19), tens (round 20–90), hundreds (round 100s), compound (rest).
+ */
+function numberBand(n: number): string {
+  if (n % 100 === 0) return 'num:hundreds' // 100, 200, … (check first so 100 ≠ ones)
+  if (n <= 10) return 'num:ones'
+  if (n <= 19) return 'num:teens'
+  if (n % 10 === 0) return 'num:tens' // 20, 30, … 90
+  return 'num:compound' // 21–99 non-round, e.g. 27, 38
+}
+
 /* ── Per-source generators ──────────────────────────────────────────────────── */
 
 function nounToItems(noun: NounEntry): Item[] {
@@ -109,6 +121,7 @@ function nounToItems(noun: NounEntry): Item[] {
   const baseWeight = noun.examWeight ?? exceptionWeight
   // Carry the grammar rule key on the items so feedback can surface the explanation.
   const exTags = noun.rule ? ['exception', `rule:${noun.rule}`] : undefined
+  const topic = noun.rule ? `article:${noun.rule}` : 'article:regular'
 
   // Definite — singular & plural
   const definites: Array<{ suffix: 'sing' | 'plur'; surface: string; article: string }> = [
@@ -119,6 +132,7 @@ function nounToItems(noun: NounEntry): Item[] {
     items.push({
       id: `article:def:${noun.id}:${d.suffix}`,
       kind: 'article',
+      topic,
       prompt: {
         text: `${BLANK} ${d.surface}`,
         hint: 'artículo determinado (el/la/los/las)',
@@ -140,6 +154,7 @@ function nounToItems(noun: NounEntry): Item[] {
     items.push({
       id: `article:indef:${noun.id}:sing`,
       kind: 'article',
+      topic,
       prompt: {
         text: `${BLANK} ${noun.singular}`,
         hint: 'artículo indeterminado (un/una)',
@@ -173,6 +188,7 @@ function verbToItems(verb: VerbEntry): Item[] {
       items.push({
         id: `verb:${tense}:${verb.infinitive}:${person}`,
         kind: 'verb-conjugation',
+        topic: `verb:${verb.infinitive}`,
         prompt: {
           text: `${PRONOUN_DISPLAY[person]} ${BLANK}`,
           lemma: verb.infinitive,
@@ -220,6 +236,7 @@ function numbersToItems(ranges: NumberRange[]): Item[] {
     items.push({
       id: `number:card:${n}`,
       kind: 'number',
+      topic: numberBand(n),
       prompt: { text: '', figure: n, hint: 'escribe el número en italiano', badges },
       answer: numberToItalian(n),
       skills,
@@ -234,6 +251,7 @@ function numbersToItems(ranges: NumberRange[]): Item[] {
     items.push({
       id: `number:ord:${n}`,
       kind: 'number',
+      topic: 'num:ordinal',
       prompt: { text: '', figure: n, hint: 'número ordinal en italiano (p. ej. 1° → primo)', badges: ['Ordinal'] },
       answer: numberToOrdinal(n),
       skills: ['number:ordinal'],
@@ -252,6 +270,7 @@ function vocabToItems(entry: VocabEntry): Item[] {
     {
       id: `vocab:${entry.category}:${entry.id}`,
       kind: 'vocab',
+      topic: `vocab:${entry.category}`,
       prompt: {
         text: entry.gloss,
         hint: `${entry.category === 'body' ? 'parte del cuerpo' : entry.category} — escribe en italiano`,
@@ -271,6 +290,7 @@ function pronounToItems(entry: PronounEntry): Item[] {
     {
       id: `pronoun:${entry.id}`,
       kind: 'pronoun',
+      topic: 'pronoun',
       prompt: { text: entry.gloss, hint: 'pronombre personal — escribe en italiano' },
       answer: entry.pronoun,
       accept: entry.accept,
@@ -290,11 +310,13 @@ function sentenceToItems(entry: SentenceEntry): Item[] {
   }
   if (entry.person) derived.push(`person:${entry.person}`)
   const skills = entry.skills && entry.skills.length ? entry.skills : derived
+  const topic = entry.lemma ? `verb:${entry.lemma}` : 'exam'
 
   return [
     {
       id: `sentence:${entry.id}`,
       kind: entry.kind,
+      topic,
       prompt: { text: entry.text, lemma: entry.lemma, person: entry.person },
       answer: entry.answer,
       accept: entry.accept,

@@ -126,6 +126,12 @@ export interface Item {
   /** Stable unique id, e.g. "verb:presente:fare:io", "article:def:studente:sing". */
   id: string;
   kind: ItemKind;
+  /**
+   * Pedagogical grouping for the two-level scheduler (the "tutor"). Items in the
+   * same topic form one mini-lesson / SRS group, e.g. "verb:fare", "article:s_consonant",
+   * "num:tens", "vocab:body", "pronoun", "exam".
+   */
+  topic: string;
   prompt: ItemPrompt;
   /** Canonical correct answer, fully accented. */
   answer: string;
@@ -247,6 +253,12 @@ export interface Settings {
   showGloss: boolean;
   /** Adaptive assist: new/weak items appear as multiple-choice, graduating to typing. */
   assist: boolean;
+  /**
+   * OPTIONAL exam date as an ISO yyyy-mm-dd string, or null when unset (the default).
+   * When set, the scheduler ramps the blend toward review/coverage as the date nears.
+   * Never hardcode a date anywhere — this is purely a user-set knob.
+   */
+  examDate: string | null;
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -255,6 +267,7 @@ export const DEFAULT_SETTINGS: Settings = {
   mode: 'mixed',
   showGloss: true,
   assist: true,
+  examDate: null,
 };
 
 /** A finished round, appended to history for trend/`Summary` views. */
