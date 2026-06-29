@@ -93,6 +93,15 @@
 
   const daysLeft = $derived(daysUntil(examDate, Date.now()))
 
+  // One-line summary that sits directly under the "A reforzar" heading so it never
+  // reads as an empty/orphaned title.
+  const reforzarSummary = $derived.by(() => {
+    const parts: string[] = []
+    if (weakItemRows.length) parts.push(`${weakItemRows.length} palabra${weakItemRows.length === 1 ? '' : 's'}`)
+    if (skillRows.length) parts.push(`${skillRows.length} habilidad${skillRows.length === 1 ? '' : 'es'}`)
+    return parts.length ? `${parts.join(' · ')} por mejorar` : ''
+  })
+
   // ── Timer ─────────────────────────────────────────────────────────────────
   let timerScale = $state(1)
   let timerRaf = 0
@@ -507,53 +516,60 @@
       />
     {/if}
 
-    <div>
-      <p class="eyebrow">Progreso</p>
-      <h2>A reforzar</h2>
-    </div>
+    <section class="insight-section">
+      <div class="section-head">
+        <h2>A reforzar</h2>
+        {#if weakItemRows.length || skillRows.length}
+          <p class="section-summary">{reforzarSummary}</p>
+        {/if}
+      </div>
 
-    {#if weakItemRows.length === 0 && skillRows.length === 0}
-      <p class="muted">Responde algunas preguntas y aquí verás qué reforzar.</p>
-    {:else}
-      {#if weakItemRows.length}
-        <div>
-          <p class="eyebrow mini">Palabras</p>
-          <ul class="weak-list">
-            {#each weakItemRows as row (row.id)}
-              <li>
-                <span>
-                  <strong>{row.label}</strong>
-                  <small>dominio {Math.round(row.mastery * 100)}%</small>
-                </span>
-                <small>{row.misses} error{row.misses === 1 ? '' : 'es'}</small>
-              </li>
-            {/each}
-          </ul>
-        </div>
+      {#if weakItemRows.length === 0 && skillRows.length === 0}
+        <p class="muted">Responde algunas preguntas y aquí verás qué reforzar.</p>
+      {:else}
+        {#if weakItemRows.length}
+          <div class="sub">
+            <p class="eyebrow mini">Palabras</p>
+            <ul class="weak-list">
+              {#each weakItemRows as row (row.id)}
+                <li>
+                  <span>
+                    <strong>{row.label}</strong>
+                    <small>dominio {Math.round(row.mastery * 100)}%</small>
+                  </span>
+                  <small>{row.misses} error{row.misses === 1 ? '' : 'es'}</small>
+                </li>
+              {/each}
+            </ul>
+          </div>
+        {/if}
+        {#if skillRows.length}
+          <div class="sub">
+            <p class="eyebrow mini">Habilidades</p>
+            <ul class="weak-list">
+              {#each skillRows as row}
+                <li>
+                  <span>
+                    <strong>{skillLabel(row.skill)}</strong>
+                    <small>dominio {Math.round(row.mastery * 100)}%</small>
+                  </span>
+                  <div class="mastery-bar" aria-hidden="true">
+                    <div class="mastery-fill" style="width: {Math.round(row.mastery * 100)}%"></div>
+                  </div>
+                </li>
+              {/each}
+            </ul>
+          </div>
+        {/if}
       {/if}
-      {#if skillRows.length}
-        <div>
-          <p class="eyebrow mini">Habilidades</p>
-          <ul class="weak-list">
-            {#each skillRows as row}
-              <li>
-                <span>
-                  <strong>{skillLabel(row.skill)}</strong>
-                  <small>dominio {Math.round(row.mastery * 100)}%</small>
-                </span>
-                <div class="mastery-bar" aria-hidden="true">
-                  <div class="mastery-fill" style="width: {Math.round(row.mastery * 100)}%"></div>
-                </div>
-              </li>
-            {/each}
-          </ul>
-        </div>
-      {/if}
-    {/if}
+    </section>
 
     {#if topicRows.length}
-      <div>
-        <p class="eyebrow mini">Temas</p>
+      <section class="insight-section">
+        <div class="section-head">
+          <h2>Temas</h2>
+          <p class="section-summary">dónde vas en cada grupo</p>
+        </div>
         <ul class="topic-list">
           {#each topicRows as t (t.topic)}
             <li>
@@ -562,7 +578,7 @@
             </li>
           {/each}
         </ul>
-      </div>
+      </section>
     {/if}
 
     <div class="bank-note">
@@ -574,7 +590,7 @@
   </aside>
 
   {#if summary}
-    <Summary record={summary} onNewRound={startNewRound} onContinue={startNewRound} />
+    <Summary record={summary} onNewRound={startNewRound} />
   {/if}
 </main>
 
@@ -598,6 +614,38 @@
   .mini {
     margin: 14px 0 6px;
     font-size: 0.72rem;
+  }
+  /* A section = a heading-group that HUGS its content (tight internal gaps),
+     while the panel's own 24px gap separates whole sections. Kills the
+     orphaned-heading / "looks empty" effect. */
+  .insight-section {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  .section-head {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+  }
+  .section-summary {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--muted);
+  }
+  .sub {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .sub .mini {
+    margin: 0;
+  }
+  .sub .weak-list {
+    margin: 0;
+  }
+  .insight-section .topic-list {
+    margin: 0;
   }
   .topic-list {
     margin: 12px 0 0;

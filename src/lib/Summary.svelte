@@ -5,11 +5,9 @@
   let {
     record,
     onNewRound,
-    onContinue,
   }: {
     record: SessionRecord
     onNewRound: () => void
-    onContinue: () => void
   } = $props()
 
   const accuracy = $derived(record.answered === 0 ? 0 : Math.round((record.correct / record.answered) * 100))
@@ -57,9 +55,9 @@
       {/if}
     </div>
 
-    <div class="summary-actions" style="display:flex; gap:10px; justify-content:flex-end;">
-      <button class="ghost-button" onclick={onContinue}>Seguir practicando</button>
-      <button class="ghost-button primary" onclick={onNewRound}>Nueva ronda</button>
+    <div class="summary-actions" style="display:flex; gap:12px; align-items:center; justify-content:flex-end;">
+      <span class="hint">Enter o Espacio para seguir</span>
+      <button class="ghost-button primary" onclick={onNewRound}>Otra ronda →</button>
     </div>
   </div>
 </div>
