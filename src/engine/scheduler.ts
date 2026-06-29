@@ -62,6 +62,15 @@ export interface RoundPlan {
   reason: 'remediation' | 'acquisition' | 'new' | 'review'
   /** The consecutive mini-lesson block at the FRONT of `items`. */
   miniLessonIds: string[]
+  /**
+   * When the focus topic is being acquired across SEVERAL consecutive mini-lessons
+   * (more cases than one block holds), the 1-based index of this lesson and the total
+   * count — for a "parte N de M" readout. Both 0 when the topic fits in one lesson or
+   * the round isn't an acquisition/new burst. The divisor is a fixed nominal (MAX_BLOCK)
+   * so M stays stable across the topic's lessons even as the last block runs short.
+   */
+  miniLessonPart: number
+  miniLessonParts: number
 }
 
 /* ── Exported constants (tunable, documented) ───────────────────────────────── */
@@ -72,8 +81,14 @@ export const WIP_LIMIT = 12
 export const WIP_MASTERY = 0.7
 /** Mastery needed (with production) to call a topic mastered. */
 export const MASTERED_MASTERY = 0.85
-/** Cap on the mini-lesson block (a verb has 6 persons). */
-export const MAX_BLOCK = 6
+/**
+ * Hard ceiling on the mini-lesson block. Sized to hold the largest coherent
+ * acquisition unit we want to teach in one consecutive burst — a verb's six persons
+ * (plus a couple of its variant items) or a single number band — without dumping a
+ * whole drill pool (e.g. all 30 ordinals) at once. Big "bag" topics exceed this and
+ * are acquired across several consecutive focused rounds.
+ */
+export const MAX_BLOCK = 8
 /** Floor on the mini-lesson block. */
 export const MIN_BLOCK = 3
 
@@ -144,7 +159,7 @@ function struggleOf(p: ItemProgress | undefined): number {
  *   consecutiveMisses·2 + min(recentLapses, 4) + (lastResult is a lapse && mastery<0.4 ? 2 : 0).
  *
  * State, checked in THIS order:
- *   1. locked     — only the number bands `num:compound` / `num:hundreds`, locked until
+ *   1. locked     — only the number bands `num:compound:*` / `num:hundreds`, locked until
  *                   BOTH `num:ones` AND `num:tens` are "learned" (seen-fraction ≥ 0.5
  *                   AND avgMastery ≥ 0.4). No other topic ever locks.
  *   2. new        — not locked AND seen === 0.
@@ -200,18 +215,20 @@ export function topicInfos(
     })
   }
 
-  // ── Lock gate: num:compound / num:hundreds depend on num:ones AND num:tens. ──
+  // ── Lock gate: num:compound:* / num:hundreds depend on num:ones AND num:tens. ──
   const isLearned = (topic: string): boolean => {
     const info = infos.get(topic)
     if (!info || info.total === 0) return false
     return info.seen / info.total >= LEARNED_SEEN_FRACTION && info.avgMastery >= LEARNED_AVG_MASTERY
   }
   const prereqsMet = isLearned('num:ones') && isLearned('num:tens')
-  const LOCKABLE = new Set(['num:compound', 'num:hundreds'])
+  // Compounds (any elision/plain band) and round hundreds depend on ones + tens.
+  const isLockable = (topic: string): boolean =>
+    topic === 'num:hundreds' || topic.startsWith('num:compound')
 
   // ── Pass 2: resolve state per topic. ──
   for (const info of infos.values()) {
-    if (LOCKABLE.has(info.topic) && !prereqsMet) {
+    if (isLockable(info.topic) && !prereqsMet) {
       info.state = 'locked'
       continue
     }
@@ -340,7 +357,15 @@ export function composeRound(
 ): RoundPlan {
   // Edge case: empty pool.
   if (pool.length === 0 || size <= 0) {
-    return { items: [], focusTopic: null, focusState: null, reason: 'review', miniLessonIds: [] }
+    return {
+      items: [],
+      focusTopic: null,
+      focusState: null,
+      reason: 'review',
+      miniLessonIds: [],
+      miniLessonPart: 0,
+      miniLessonParts: 0,
+    }
   }
 
   // 1. Topic aggregates + lock set.
@@ -463,7 +488,15 @@ export function composeRound(
     } else {
       candidates = orderBlock(focusTopic, candidates, store)
     }
-    const blockSize = clamp(Math.round(size * focusFraction), MIN_BLOCK, MAX_BLOCK)
+    // Coverage-aware block sizing. Far from the exam the ceiling is MAX_BLOCK, so the
+    // block can cover a whole coherent paradigm (a verb's persons, a number band) instead
+    // of a flat 6; as the exam nears, focusFraction (∈ [0.25, 0.5]) shrinks the ceiling
+    // toward MIN_BLOCK so rounds tilt to spaced review. The block then covers as many
+    // distinct cases as the topic actually offers — so a small topic finishes in one
+    // lesson and a paradigm larger than 6 isn't truncated, while an oversized "bag" topic
+    // (ordinals, regular articles) is capped here and continues next focused round.
+    const examCeiling = clamp(Math.round(MAX_BLOCK * (focusFraction / 0.5)), MIN_BLOCK, MAX_BLOCK)
+    const blockSize = clamp(candidates.length, MIN_BLOCK, examCeiling)
     block = candidates.slice(0, blockSize)
   }
   const blockIds = new Set(block.map((i) => i.id))
@@ -538,11 +571,27 @@ export function composeRound(
 
   const items = chosen.slice(0, size)
 
+  // Multi-lesson progress: when an acquisition/new focus topic has more cases than one
+  // block (nominal MAX_BLOCK) holds, report "parte N de M" so marching through a big topic
+  // (ordinals -esimo, the regular-article genders) feels like progress, not truncation.
+  let miniLessonPart = 0
+  let miniLessonParts = 0
+  if (focusTopic !== null && (reason === 'acquisition' || reason === 'new')) {
+    const info = infos.get(focusTopic)!
+    const parts = Math.ceil(info.total / MAX_BLOCK)
+    if (parts > 1) {
+      miniLessonParts = parts
+      miniLessonPart = clamp(Math.floor(info.seen / MAX_BLOCK) + 1, 1, parts)
+    }
+  }
+
   return {
     items,
     focusTopic,
     focusState: focusTopic ? infos.get(focusTopic)!.state : null,
     reason,
     miniLessonIds: block.map((i) => i.id),
+    miniLessonPart,
+    miniLessonParts,
   }
 }

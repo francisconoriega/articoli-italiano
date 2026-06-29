@@ -80,6 +80,9 @@ export class PracticeSession {
   roundReason: RoundPlan['reason'] = 'review'
   /** Size of this round's mini-lesson block (for the "Lección: x (done/total)" indicator). */
   miniLessonTotal = 0
+  /** "Parte N de M" when the focus topic spans several mini-lessons; both 0 otherwise. */
+  miniLessonPart = 0
+  miniLessonParts = 0
 
   // lifetime counters
   answered = 0
@@ -193,6 +196,8 @@ export class PracticeSession {
     this.miniLessonSet = new Set(plan.miniLessonIds)
     this.blockRemaining = new Set(plan.miniLessonIds)
     this.miniLessonTotal = plan.miniLessonIds.length
+    this.miniLessonPart = plan.miniLessonPart
+    this.miniLessonParts = plan.miniLessonParts
     this.focusTopic = plan.focusTopic
     this.focusState = plan.focusState
     this.roundReason = plan.reason

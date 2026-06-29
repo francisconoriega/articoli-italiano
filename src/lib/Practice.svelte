@@ -13,6 +13,9 @@
     label: string | null
     done: number
     total: number
+    /** "Parte N de M" when the topic spans several lessons; both 0 otherwise. */
+    part: number
+    parts: number
     reason: 'remediation' | 'acquisition' | 'new' | 'review'
   }
 
@@ -192,6 +195,9 @@
     <div class="mini-indicator" aria-label="Mini-lección en curso">
       <span class="mini-tag">Lección</span>
       <strong class="mini-name">{miniLesson.label}</strong>
+      {#if miniLesson.parts > 1}
+        <span class="mini-part">parte {miniLesson.part} de {miniLesson.parts}</span>
+      {/if}
       <span class="mini-reason">{REASON_LABEL[miniLesson.reason]}</span>
       {#if miniLesson.total > 0}
         <span class="mini-dots" aria-hidden="true">
@@ -375,6 +381,15 @@
     font-size: 0.78rem;
     font-weight: 700;
     color: var(--muted);
+    text-transform: lowercase;
+  }
+  .mini-part {
+    font-size: 0.72rem;
+    font-weight: 800;
+    color: var(--accent);
+    background: color-mix(in srgb, var(--accent) 14%, transparent);
+    border-radius: 999px;
+    padding: 2px 8px;
     text-transform: lowercase;
   }
   .mini-dots {
