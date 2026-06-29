@@ -46,6 +46,7 @@
   let weakItemRows = $state<Array<{ id: string; label: string; misses: number; mastery: number }>>([])
   let poolSize = $state(session.poolSize)
   let showGloss = $state(true)
+  let showTonic = $state(session.settings.tonicStress)
   // Anchored correction banner (top of canvas, ~3s) shown on a miss / "No sé".
   let banner = $state<{ answer: string; before: string; after: string; meaning: string | null; status: 'wrong' | 'near' } | null>(null)
   let bannerTimer = 0
@@ -154,6 +155,7 @@
     currentMode = session.currentMode
     choices = session.currentChoices
     showGloss = session.currentShowGloss
+    showTonic = session.settings.tonicStress
     poolSize = session.poolSize
 
     // Scheduler-facing state.
@@ -379,6 +381,11 @@
     sync() // re-evaluate the current item's presentation (choice ⇄ type)
   }
 
+  function onToggleTonic(enabled: boolean) {
+    session.setTonicStress(enabled)
+    sync() // settings is a getter on the session — refresh the view
+  }
+
   function onSetExamDate(date: string | null) {
     session.setExamDate(date)
     examDate = date // the ramp takes effect from the next composed round
@@ -514,6 +521,7 @@
     {stageClass}
     {timerScale}
     {showGloss}
+    {showTonic}
     {banner}
     {poolSize}
     miniLesson={{
@@ -533,6 +541,7 @@
     {onModeChange}
     {onToggleTimer}
     {onToggleAssist}
+    {onToggleTonic}
     {onSetExamDate}
     {onExport}
     {onImport}

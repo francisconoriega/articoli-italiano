@@ -31,6 +31,7 @@
     stageClass = '',
     timerScale = 1,
     showGloss = true,
+    showTonic = true,
     banner = null,
     poolSize,
     miniLesson,
@@ -44,6 +45,7 @@
     onModeChange,
     onToggleTimer,
     onToggleAssist,
+    onToggleTonic,
     onSetExamDate,
     onExport,
     onImport,
@@ -63,6 +65,7 @@
     stageClass?: string
     timerScale?: number
     showGloss?: boolean
+    showTonic?: boolean
     banner?: Banner | null
     poolSize: number
     miniLesson: MiniLesson
@@ -76,6 +79,7 @@
     onModeChange: (mode: PracticeMode) => void
     onToggleTimer: (enabled: boolean) => void
     onToggleAssist: (enabled: boolean) => void
+    onToggleTonic: (enabled: boolean) => void
     onSetExamDate: (date: string | null) => void
     onExport: () => void
     onImport: (json: string) => void
@@ -159,6 +163,14 @@
         />
         Cronómetro
       </label>
+      <label class="toggle-control" title="Subraya la sílaba tónica de palabras de 3+ sílabas">
+        <input
+          type="checkbox"
+          checked={showTonic}
+          onchange={(e) => onToggleTonic(e.currentTarget.checked)}
+        />
+        Sílaba tónica
+      </label>
       <label class="toggle-control exam-control">
         <span>Examen</span>
         <input
@@ -199,6 +211,7 @@
         {selected}
         disabled={phase === 'feedback'}
         {showGloss}
+        showTonic={showTonic}
         {stageClass}
         showTimer={settings.timerEnabled}
         {timerScale}
@@ -211,6 +224,7 @@
         {result}
         disabled={phase === 'feedback'}
         {showGloss}
+        showTonic={showTonic}
         {stageClass}
         showTimer={settings.timerEnabled}
         {timerScale}

@@ -163,6 +163,12 @@ export class PracticeSession {
     this.computePresentation(this.current)
   }
 
+  /** Toggle the tonic-syllable underline on prompt cards (pure display setting). */
+  setTonicStress(enabled: boolean): void {
+    this.store.settings.tonicStress = enabled
+    saveStore(this.store)
+  }
+
   /** Reset round counters, compose a fresh plan, and draw the first item. */
   startRound(now: number): Item | null {
     this.roundAnswered = 0

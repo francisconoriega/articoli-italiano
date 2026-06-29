@@ -1,6 +1,6 @@
 <script lang="ts">
   import type { Item } from '../../types'
-  import { promptView, splitBlank, badgeTitle } from '../promptView'
+  import { promptView, lineSegments, badgeTitle } from '../promptView'
 
   let {
     item,
@@ -8,6 +8,7 @@
     selected = null,
     disabled = false,
     showGloss = true,
+    showTonic = true,
     stageClass = '',
     showTimer = false,
     timerScale = 1,
@@ -18,6 +19,7 @@
     selected?: string | null
     disabled?: boolean
     showGloss?: boolean
+    showTonic?: boolean
     stageClass?: string
     showTimer?: boolean
     timerScale?: number
@@ -48,10 +50,8 @@
   <!-- HERO -->
   {#if pv.hero.isFigure}
     <div class="prompt-hero figure">{pv.hero.text}</div>
-  {:else if pv.hero.hasBlank}
-    <div class="prompt-hero">{@render inlineLine(pv.hero.text)}</div>
   {:else}
-    <div class="prompt-hero">{pv.hero.text}</div>
+    <div class="prompt-hero">{@render line(pv.hero.text, pv.hero.tonic && showTonic)}</div>
   {/if}
 
   {#if showGloss && pv.meaning}
@@ -59,9 +59,7 @@
   {/if}
 
   {#if pv.task}
-    <div class="prompt-task">
-      {#if pv.task.hasBlank}{@render inlineLine(pv.task.text)}{:else}{pv.task.text}{/if}
-    </div>
+    <div class="prompt-task">{@render line(pv.task.text, false)}</div>
   {/if}
 
   {#if item.prompt.hint}<div class="hint">{item.prompt.hint}</div>{/if}
@@ -70,17 +68,17 @@
     {#each choices as opt, i (opt + i)}
       <button type="button" class={choiceClass(opt)} {disabled} onclick={() => onChoose?.(opt)}>
         <kbd>{i + 1}</kbd>
-        <span>{opt}</span>
+        <span>{@render line(opt, showTonic)}</span>
       </button>
     {/each}
   </div>
 </div>
 
-{#snippet inlineLine(text: string)}
-  {@const s = splitBlank(text)}<span>{s.before}</span><span
+{#snippet line(text: string, tonic: boolean)}
+  {#each lineSegments(text, tonic) as seg}{#if seg.t === 'blank'}<span
     class="blank-slot"
     class:filled={disabled && !!selected}>{disabled && selected ? selected : ' '}</span
-  ><span>{s.after}</span>
+  >{:else if seg.t === 'tonic'}<span class="tonic">{seg.v}</span>{:else}<span>{seg.v}</span>{/if}{/each}
 {/snippet}
 
 <style>
