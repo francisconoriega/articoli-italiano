@@ -12,14 +12,35 @@
  * conjugations of the SAME verb (and, only if needed, a same-class similar verb) —
  * never random unrelated verbs.
  */
-import type { Item, ItemProgress, PresentationStage } from '../types'
+import type { Item, ItemProgress, PresentationStage, SkillProgress } from '../types'
+import { primedStartLevel } from './priming'
 
-export function presentationFor(progress: ItemProgress | undefined): PresentationStage {
-  const level = progress?.level ?? 0
-  // Free typing (Italian-only) once mastered; otherwise multiple-choice WITH the
-  // Spanish meaning — the gloss stays through the entire recognition phase.
+/** Map a per-item presentation level to its stage (single source of the rule):
+ *  free typing (Italian-only) once mastered; otherwise multiple-choice WITH the
+ *  Spanish meaning — the gloss stays through the entire recognition phase. */
+function stageForLevel(level: number): PresentationStage {
   if (level >= 2) return { input: 'type', gloss: false }
   return { input: 'choice', gloss: true }
+}
+
+export function presentationFor(progress: ItemProgress | undefined): PresentationStage {
+  return stageForLevel(progress?.level ?? 0)
+}
+
+/**
+ * Presentation for an item that may be UNSEEN: when there's no progress yet, derive a
+ * skill-primed start level (engine/priming.ts) so a new item whose governing rule is
+ * already mastered begins at free-typing instead of the MC ladder. Once the item has
+ * progress, this is exactly {@link presentationFor}. Callers gate on Settings.assist
+ * (with assist off everything is typing anyway) and Settings.skillPrimedGraduation.
+ */
+export function presentationForItem(
+  progress: ItemProgress | undefined,
+  item: Item,
+  skills: Record<string, SkillProgress>,
+): PresentationStage {
+  if (progress === undefined) return stageForLevel(primedStartLevel(item, skills))
+  return presentationFor(progress)
 }
 
 const DEF_ARTICLES = ['il', 'lo', 'la', "l'", 'i', 'gli', 'le']

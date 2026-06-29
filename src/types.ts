@@ -206,6 +206,13 @@ export interface ItemProgress {
   level: number;
   /** Consecutive misses on THIS item (resets on any success); 2 → demote one level. */
   consecutiveMisses: number;
+  /**
+   * True while this item is "skill-primed": it skipped (or short-cut) the MC ladder
+   * at creation because its governing rule was already mastered (engine/priming.ts).
+   * Cleared on the FIRST answer — a success confirms the prime; a miss disproves it
+   * and drops the item straight back to the MC ladder. Absent on legacy records.
+   */
+  primed?: boolean;
   lastResult: AnswerResult | null;
   /** Epoch ms of the last time this item was shown. */
   lastSeen: number | null;
@@ -254,6 +261,13 @@ export interface Settings {
   /** Adaptive assist: new/weak items appear as multiple-choice, graduating to typing. */
   assist: boolean;
   /**
+   * Skill-primed graduation: a NEW item whose governing rule is already mastered (and
+   * that is not an exception) starts at free-typing instead of re-grinding the MC
+   * ladder from zero. Only meaningful while `assist` is on. Default on; a kill-switch
+   * for the cautious (e.g. right before an exam). Absent on legacy stores → defaults on.
+   */
+  skillPrimedGraduation: boolean;
+  /**
    * OPTIONAL exam date as an ISO yyyy-mm-dd string, or null when unset (the default).
    * When set, the scheduler ramps the blend toward review/coverage as the date nears.
    * Never hardcode a date anywhere — this is purely a user-set knob.
@@ -267,6 +281,7 @@ export const DEFAULT_SETTINGS: Settings = {
   mode: 'mixed',
   showGloss: true,
   assist: true,
+  skillPrimedGraduation: true,
   examDate: null,
 };
 

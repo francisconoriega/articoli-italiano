@@ -19,9 +19,10 @@ import type {
 } from '../types'
 import { checkAnswer } from './validate'
 import { applyAnswer, createItemProgress, rollUpSkill } from './mastery'
+import { createPrimedItemProgress } from './priming'
 import { saveStore, exportStoreJson, importStoreJson, mergeStores } from './storage'
 import { chooseNext, poolForMode, scheduleRecentMiss, pickRecentMiss, type RecentMiss } from './select'
-import { buildChoices, presentationFor } from './choices'
+import { buildChoices, presentationFor, presentationForItem } from './choices'
 import { composeRound, topicInfos, type RoundPlan, type TopicState, type TopicInfo } from './scheduler'
 
 export const ROUND_SIZE = 15
@@ -251,7 +252,13 @@ export class PracticeSession {
       this.currentChoices = []
       return
     }
-    const stage = presentationFor(this.store.items[item.id])
+    // Skill-primed graduation: when an item is still UNSEEN, presentationForItem may
+    // start it at typing if its governing rule is already mastered. Once seen, both
+    // paths read the item's own level. Gated by a setting (default on).
+    const progress = this.store.items[item.id]
+    const stage = this.store.settings.skillPrimedGraduation
+      ? presentationForItem(progress, item, this.store.skills)
+      : presentationFor(progress)
     this.currentMode = this.store.settings.assist ? stage.input : 'type'
     this.currentShowGloss = stage.gloss && this.store.settings.showGloss
     this.currentChoices = this.currentMode === 'choice' ? buildChoices(item, this.allItems, 4) : []
@@ -325,8 +332,14 @@ export class PracticeSession {
   private record(item: Item, result: ValidationResult, answerResult: AnswerResult, now: number): SubmitResult {
     const responseMs = Math.max(0, now - this.startedAt)
 
-    // 1) item mastery
-    const prev: ItemProgress = this.store.items[item.id] ?? createItemProgress(item)
+    // 1) item mastery — a never-seen item is seeded with a skill-primed head start
+    // (typing + higher mastery) when its governing rule is mastered, else the plain
+    // MC-floor record. Gated by a setting (default on).
+    const prev: ItemProgress =
+      this.store.items[item.id] ??
+      (this.store.settings.skillPrimedGraduation
+        ? createPrimedItemProgress(item, this.store.skills)
+        : createItemProgress(item))
     this.store.items[item.id] = applyAnswer(prev, answerResult, responseMs, now)
 
     // 2) skill rollups

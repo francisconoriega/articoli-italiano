@@ -38,17 +38,19 @@ import { nextStabilityStep, dueFromStep, RELAPSE_MS } from './srs';
  * each value lives in the doc comment of the function that consumes it.
  * ──────────────────────────────────────────────────────────────────────────── */
 
-/** Confidence a fresh, never-seen item starts at. */
-const INITIAL_MASTERY = 0.2;
+/** Confidence a fresh, never-seen item starts at. Exported so engine/priming.ts
+ *  (skill-primed graduation) can anchor a primed item's starting mastery to it. */
+export const INITIAL_MASTERY = 0.2;
 /** Default difficulty; bumped for items flagged hard at creation time. */
 const DEFAULT_DIFFICULTY = 0.8;
 const HARD_DIFFICULTY = 1.3;
 const MIN_DIFFICULTY = 0.5;
 const MAX_DIFFICULTY = 2.0;
 
-/** Item skills / tags that mark an item as intrinsically harder up front. */
-const HARD_SKILLS: readonly string[] = ['class:irregular', 'class:modal', 'class:isc'];
-const HARD_TAG = 'exception';
+/** Item skills / tags that mark an item as intrinsically harder up front.
+ *  Exported so engine/priming.ts can refuse to prime intrinsically-hard items. */
+export const HARD_SKILLS: readonly string[] = ['class:irregular', 'class:modal', 'class:isc'];
+export const HARD_TAG = 'exception';
 
 /** Mastery is capped just below 1 (perfection is never asserted) … */
 const MASTERY_CEILING = 0.99;
@@ -171,6 +173,10 @@ export function applyAnswer(
     next.consecutiveMisses = 0;
     next.level = Math.min(MAX_LEVEL, (progress.level ?? 0) + 1);
 
+    // A confirmed prime becomes an ordinary item: clear the flag so future misses
+    // use the normal forgive-one-slip hysteresis, not the immediate primed reset.
+    if (progress.primed) next.primed = false;
+
     // Multiplicative approach toward 1 with diminishing returns, capped < 1.
     next.mastery = Math.min(MASTERY_CEILING, progress.mastery + rate * (1 - progress.mastery));
 
@@ -186,15 +192,25 @@ export function applyAnswer(
     next.streak = 0;
     next.recentLapses = progress.recentLapses + 1;
 
-    // Per-item demotion with hysteresis: a single slip is forgiven; only the 2nd
-    // CONSECUTIVE miss on this item walks it down one presentation level.
-    const consecutive = (progress.consecutiveMisses ?? 0) + 1;
-    if (consecutive >= DEMOTE_AFTER) {
-      next.level = Math.max(0, (progress.level ?? 0) - 1);
+    if (progress.primed) {
+      // Skill-primed self-correction: this item skipped (or short-cut) the MC ladder
+      // on the bet that its already-mastered rule made it easy. A miss disproves the
+      // bet — drop it straight back to full scaffolding (MC, level 0) instead of
+      // waiting for a 2nd consecutive miss, and clear the flag.
+      next.level = 0;
       next.consecutiveMisses = 0;
+      next.primed = false;
     } else {
-      next.level = progress.level ?? 0;
-      next.consecutiveMisses = consecutive;
+      // Per-item demotion with hysteresis: a single slip is forgiven; only the 2nd
+      // CONSECUTIVE miss on this item walks it down one presentation level.
+      const consecutive = (progress.consecutiveMisses ?? 0) + 1;
+      if (consecutive >= DEMOTE_AFTER) {
+        next.level = Math.max(0, (progress.level ?? 0) - 1);
+        next.consecutiveMisses = 0;
+      } else {
+        next.level = progress.level ?? 0;
+        next.consecutiveMisses = consecutive;
+      }
     }
 
     // Penalty scaled by PRIOR mastery: high confidence is punished hard
