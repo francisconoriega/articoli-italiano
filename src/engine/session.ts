@@ -301,6 +301,26 @@ export class PracticeSession {
     return [...topicInfos(this.pool, this.store, now).values()]
   }
 
+  /**
+   * Distinct topics in this round's queue, focus topic first — drives the sidebar's
+   * "ahora reforzando" chips so what's shown is exactly what's being drilled.
+   */
+  roundTopics(): string[] {
+    const out: string[] = []
+    const seen = new Set<string>()
+    if (this.focusTopic) {
+      seen.add(this.focusTopic)
+      out.push(this.focusTopic)
+    }
+    for (const it of this.planItems) {
+      if (it.topic && !seen.has(it.topic)) {
+        seen.add(it.topic)
+        out.push(it.topic)
+      }
+    }
+    return out
+  }
+
   /** How many of this round's mini-lesson block items have been answered so far. */
   miniLessonDone(): number {
     return this.miniLessonTotal - this.blockRemaining.size

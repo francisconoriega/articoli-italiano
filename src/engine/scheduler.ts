@@ -44,8 +44,10 @@ export interface TopicInfo {
   seen: number
   /** Items at level >= 2 (production / typing reached). */
   typed: number
-  /** Mean mastery (an unseen item counts as 0.2). */
+  /** Mean mastery (an unseen item counts as 0.2). Drives the topic state machine. */
   avgMastery: number
+  /** Mean mastery over SEEN items only (0 when none seen) — no unseen floor; for display. */
+  seenMastery: number
   /** Active-unmastered: seen>0 && mastery < WIP_MASTERY (0.7). */
   weak: number
   /** Items where isDue() is true. */
@@ -188,6 +190,7 @@ export function topicInfos(
     let weak = 0
     let due = 0
     let masterySum = 0
+    let seenMasterySum = 0
     let struggle = 0
     for (const item of items) {
       const p = store.items[item.id]
@@ -195,6 +198,7 @@ export function topicInfos(
       masterySum += mastery
       if (p && p.seen > 0) {
         seen += 1
+        seenMasterySum += p.mastery
         if (p.level >= 2) typed += 1
         if (p.mastery < WIP_MASTERY) weak += 1
       }
@@ -209,6 +213,7 @@ export function topicInfos(
       seen,
       typed,
       avgMastery: items.length ? masterySum / items.length : 0,
+      seenMastery: seen ? seenMasterySum / seen : 0,
       weak,
       due,
       struggle,
@@ -247,6 +252,103 @@ export function topicInfos(
   }
 
   return infos
+}
+
+/* ── Category rollup (sidebar "Tu avance" tree) ───────────────────────────────── */
+
+export type CategoryState = 'active' | 'new' | 'mastered'
+
+export interface CategoryInfo {
+  /** Stable key (verbos, numeros, …); the UI maps it to a label. */
+  key: string
+  state: CategoryState
+  /** Items across all member topics in the pool. */
+  total: number
+  seen: number
+  /** seen / total (0–1). */
+  coverage: number
+  /** Item-weighted mean mastery (unseen items already fold in at UNSEEN_MASTERY). */
+  mastery: number
+  /** Member topics that are started but still weak (avgMastery < WIP_MASTERY). */
+  weakTopics: number
+  /** Member topics whose state is 'mastered'. */
+  masteredTopics: number
+  /** Member topics, weakest-started-first then unseen. */
+  topics: TopicInfo[]
+}
+
+/** Display order used to break sort ties between categories. */
+const CATEGORY_ORDER = ['verbos', 'numeros', 'hora', 'articulos', 'vocab', 'expresiones', 'pronombres', 'examen', 'otros']
+
+const CATEGORY_STATE_RANK: Record<CategoryState, number> = { active: 0, new: 1, mastered: 2 }
+
+/** Map a scheduler topic to its high-level category key (verbs of motion fold into verbos). */
+export function categoryKeyOf(topic: string): string {
+  if (topic.startsWith('verb:') || topic === 'motion') return 'verbos'
+  if (topic.startsWith('num:')) return 'numeros'
+  if (topic === 'time') return 'hora'
+  if (topic.startsWith('article:')) return 'articulos'
+  if (topic.startsWith('vocab:')) return 'vocab'
+  if (topic === 'functional') return 'expresiones'
+  if (topic === 'pronoun') return 'pronombres'
+  if (topic === 'exam') return 'examen'
+  return 'otros'
+}
+
+/**
+ * Roll topic infos up into high-level categories for the sidebar tree.
+ * coverage = fraction of items started; mastery = mean mastery over the SEEN items
+ * only (0 when nothing's been started), so an untouched category reads 0%/0% rather
+ * than the misleading UNSEEN_MASTERY floor. weakTopics still uses the engine's
+ * avgMastery (the canonical WIP signal that drives scheduling).
+ * Sorted: active first (most weak topics first), new next, mastered (dimmed) last.
+ */
+export function categoryProgress(infos: TopicInfo[]): CategoryInfo[] {
+  const groups = new Map<string, TopicInfo[]>()
+  for (const info of infos) {
+    const key = categoryKeyOf(info.topic)
+    const arr = groups.get(key)
+    if (arr) arr.push(info)
+    else groups.set(key, [info])
+  }
+
+  const cats: CategoryInfo[] = []
+  for (const [key, members] of groups) {
+    let total = 0
+    let seen = 0
+    let seenMasterySum = 0
+    let weakTopics = 0
+    let masteredTopics = 0
+    for (const m of members) {
+      total += m.total
+      seen += m.seen
+      seenMasterySum += m.seenMastery * m.seen
+      if (m.seen > 0 && m.avgMastery < WIP_MASTERY) weakTopics += 1
+      if (m.state === 'mastered') masteredTopics += 1
+    }
+    const coverage = total ? seen / total : 0
+    const mastery = seen ? seenMasterySum / seen : 0
+    const state: CategoryState =
+      seen === 0
+        ? 'new'
+        : weakTopics === 0 && coverage >= 0.8 && mastery >= MASTERED_MASTERY
+          ? 'mastered'
+          : 'active'
+    // Weakest started topics first; unseen ones sink to the bottom (not yet actionable).
+    const topics = [...members].sort(
+      (a, b) => (a.seen > 0 ? 0 : 1) - (b.seen > 0 ? 0 : 1) || a.avgMastery - b.avgMastery,
+    )
+    cats.push({ key, state, total, seen, coverage, mastery, weakTopics, masteredTopics, topics })
+  }
+
+  cats.sort(
+    (a, b) =>
+      CATEGORY_STATE_RANK[a.state] - CATEGORY_STATE_RANK[b.state] ||
+      b.weakTopics - a.weakTopics ||
+      a.mastery - b.mastery ||
+      CATEGORY_ORDER.indexOf(a.key) - CATEGORY_ORDER.indexOf(b.key),
+  )
+  return cats
 }
 
 /** The set of currently-locked topics, derived from a topicInfos map. */

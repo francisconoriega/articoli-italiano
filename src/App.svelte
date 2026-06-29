@@ -11,19 +11,18 @@
   } from './types'
   import { BLANK } from './types'
   import { PracticeSession, type SessionStats, type SubmitResult } from './engine/session'
-  import { daysUntil, type TopicState, type TopicInfo } from './engine/scheduler'
+  import { daysUntil, categoryProgress, type TopicState, type CategoryInfo } from './engine/scheduler'
   import { cardinalLesson } from './engine/numbers'
   import { explanationRules, catalog } from './content'
   import Practice from './lib/Practice.svelte'
   import Summary from './lib/Summary.svelte'
   import ConjugationTable from './lib/ConjugationTable.svelte'
-  import { skillLabel, itemLabel, topicLabel } from './lib/labels'
+  import { topicLabel, subtopicLabel, categoryLabel } from './lib/labels'
 
   let { items, store }: { items: Item[]; store: ProgressStore } = $props()
 
   // `items`/`store` are passed once at boot and never change — read them once.
   const session = untrack(() => new PracticeSession(items, store))
-  const itemIndex = untrack(() => new Map(items.map((i) => [i.id, i])))
   const verbByInf = untrack(() => new Map(catalog.verbs.map((v) => [v.infinitive, v])))
   const now = () => Date.now()
 
@@ -42,8 +41,6 @@
   let summary = $state<SessionRecord | null>(null)
   // True between the round-completing answer and the summary overlay appearing.
   let endingRound = $state(false)
-  let skillRows = $state<Array<{ skill: string; mastery: number }>>([])
-  let weakItemRows = $state<Array<{ id: string; label: string; misses: number; mastery: number }>>([])
   let poolSize = $state(session.poolSize)
   let showGloss = $state(true)
   let showTonic = $state(session.settings.tonicStress)
@@ -60,7 +57,11 @@
   let miniTotal = $state(0)
   let miniPart = $state(0)
   let miniParts = $state(0)
-  let topicRows = $state<TopicInfo[]>([])
+  // Sidebar "Tu avance" tree: high-level categories + what the scheduler is drilling now.
+  let categoryRows = $state<CategoryInfo[]>([])
+  let nowReinforcing = $state<string[]>([])
+  // Which categories are expanded (explicit user toggles override the default-open one).
+  let openCats = $state<Record<string, boolean>>({})
   let examDate = $state<string | null>(session.settings.examDate)
   // One-shot mini-lesson completion beat ("¡Lección completa!").
   let miniLessonBeat = $state<string | null>(null)
@@ -96,14 +97,29 @@
 
   const daysLeft = $derived(daysUntil(examDate, Date.now()))
 
-  // One-line summary that sits directly under the "A reforzar" heading so it never
-  // reads as an empty/orphaned title.
-  const reforzarSummary = $derived.by(() => {
-    const parts: string[] = []
-    if (weakItemRows.length) parts.push(`${weakItemRows.length} palabra${weakItemRows.length === 1 ? '' : 's'}`)
-    if (skillRows.length) parts.push(`${skillRows.length} habilidad${skillRows.length === 1 ? '' : 'es'}`)
-    return parts.length ? `${parts.join(' · ')} por mejorar` : ''
+  // Why the engine picked this round — shown under the "ahora reforzando" chips.
+  const reinforceReason = $derived.by(() => {
+    const map = {
+      remediation: 'Repaso de errores',
+      acquisition: 'Lección enfocada',
+      new: 'Tema nuevo',
+      review: 'Repaso intercalado',
+    } as const
+    const base = map[roundReason]
+    return isMiniLesson && miniTotal > 0 ? `${base} · ${miniDone} de ${miniTotal}` : base
   })
+
+  // Category tree expand/collapse. The first active category is open by default until
+  // the learner explicitly toggles something (then openCats wins).
+  const defaultOpenKey = $derived(
+    categoryRows.find((c) => c.state === 'active')?.key ?? categoryRows[0]?.key ?? null,
+  )
+  function isOpen(key: string): boolean {
+    return openCats[key] ?? key === defaultOpenKey
+  }
+  function toggleCat(key: string): void {
+    openCats = { ...openCats, [key]: !isOpen(key) }
+  }
 
   // ── Timer ─────────────────────────────────────────────────────────────────
   let timerScale = $state(1)
@@ -134,14 +150,6 @@
   }
 
   // ── Helpers ──────────────────────────────────────────────────────────────
-  const STATE_RANK: Record<TopicState, number> = {
-    learning: 0,
-    reviewing: 1,
-    new: 2,
-    mastered: 3,
-    locked: 4,
-  }
-
   const STATE_LABEL: Record<TopicState, string> = {
     learning: 'aprendiendo',
     reviewing: 'repasando',
@@ -170,27 +178,10 @@
     miniPart = session.miniLessonPart
     miniParts = session.miniLessonParts
     examDate = session.settings.examDate
-    // Topics the learner has started, most-active first (learning → reviewing → mastered).
-    topicRows = session
-      .topicProgress(now())
-      .filter((t) => t.seen > 0)
-      .sort((a, b) => STATE_RANK[a.state] - STATE_RANK[b.state] || b.seen / b.total - a.seen / a.total)
-      .slice(0, 8)
-    skillRows = Object.entries(session.store.skills)
-      .filter(([, p]) => p.seen > 0)
-      .map(([skill, p]) => ({ skill, mastery: p.mastery }))
-      .sort((a, b) => a.mastery - b.mastery)
-      .slice(0, 6)
-
-    // Concrete "weak words" — the specific items the learner is missing most.
-    const weak: Array<{ id: string; label: string; misses: number; mastery: number }> = []
-    for (const [id, p] of Object.entries(session.store.items)) {
-      if (p.seen === 0 || p.wrong === 0) continue
-      const it = itemIndex.get(id)
-      if (it) weak.push({ id, label: itemLabel(it), misses: p.wrong, mastery: p.mastery })
-    }
-    weak.sort((a, b) => b.misses - a.misses || a.mastery - b.mastery)
-    weakItemRows = weak.slice(0, 6)
+    // High-level progress tree: categories rolled up from per-topic infos…
+    categoryRows = categoryProgress(session.topicProgress(now()))
+    // …and exactly what the scheduler is drilling this round (focus topic first).
+    nowReinforcing = session.roundTopics().slice(0, 4).map(topicLabel)
   }
 
   function explanationFor(item: Item | null): string {
@@ -566,69 +557,73 @@
     {/if}
 
     <section class="insight-section">
-      <div class="section-head">
-        <h2>A reforzar</h2>
-        {#if weakItemRows.length || skillRows.length}
-          <p class="section-summary">{reforzarSummary}</p>
-        {/if}
+      <div class="section-head avance-head">
+        <h2>Tu avance</h2>
+        <span class="legend">
+          <span class="legend-item"><i class="dot cov" aria-hidden="true"></i>cobertura</span>
+          <span class="legend-item"><i class="dot dom" aria-hidden="true"></i>dominio</span>
+        </span>
       </div>
 
-      {#if weakItemRows.length === 0 && skillRows.length === 0}
-        <p class="muted">Responde algunas preguntas y aquí verás qué reforzar.</p>
-      {:else}
-        {#if weakItemRows.length}
-          <div class="sub">
-            <p class="eyebrow mini">Palabras</p>
-            <ul class="weak-list">
-              {#each weakItemRows as row (row.id)}
-                <li>
-                  <span>
-                    <strong>{row.label}</strong>
-                    <small>dominio {Math.round(row.mastery * 100)}%</small>
-                  </span>
-                  <small>{row.misses} error{row.misses === 1 ? '' : 'es'}</small>
-                </li>
-              {/each}
-            </ul>
+      {#if nowReinforcing.length}
+        <div class="now-reinforcing">
+          <p class="reinforce-title">Ahora reforzando</p>
+          <div class="reinforce-chips">
+            {#each nowReinforcing as label}
+              <span class="reinforce-chip">{label}</span>
+            {/each}
           </div>
-        {/if}
-        {#if skillRows.length}
-          <div class="sub">
-            <p class="eyebrow mini">Habilidades</p>
-            <ul class="weak-list">
-              {#each skillRows as row}
-                <li>
-                  <span>
-                    <strong>{skillLabel(row.skill)}</strong>
-                    <small>dominio {Math.round(row.mastery * 100)}%</small>
-                  </span>
-                  <div class="mastery-bar" aria-hidden="true">
-                    <div class="mastery-fill" style="width: {Math.round(row.mastery * 100)}%"></div>
-                  </div>
-                </li>
-              {/each}
-            </ul>
-          </div>
-        {/if}
-      {/if}
-    </section>
-
-    {#if topicRows.length}
-      <section class="insight-section">
-        <div class="section-head">
-          <h2>Temas</h2>
-          <p class="section-summary">dónde vas en cada grupo</p>
+          <p class="reinforce-reason">{reinforceReason}</p>
         </div>
-        <ul class="topic-list">
-          {#each topicRows as t (t.topic)}
-            <li>
-              <span class="topic-name">{topicLabel(t.topic)}</span>
-              <span class="topic-chip state-{t.state}">{STATE_LABEL[t.state]}</span>
+      {/if}
+
+      {#if categoryRows.length}
+        <ul class="cat-list">
+          {#each categoryRows as cat (cat.key)}
+            {@const open = isOpen(cat.key)}
+            <li class="cat" class:mastered={cat.state === 'mastered'}>
+              <button class="cat-head" aria-expanded={open} onclick={() => toggleCat(cat.key)}>
+                <span class="chev" class:open aria-hidden="true">▶</span>
+                <span class="cat-name">{categoryLabel(cat.key)}</span>
+                {#if cat.weakTopics > 0}
+                  <span class="cat-flag weak">{cat.weakTopics} flojo{cat.weakTopics === 1 ? '' : 's'}</span>
+                {:else if cat.seen > 0}
+                  <span class="cat-flag ok" aria-label="al día">✓</span>
+                {/if}
+                <span class="cat-nums">
+                  <b>{Math.round(cat.mastery * 100)}%</b>
+                  <i>{Math.round(cat.coverage * 100)}%</i>
+                </span>
+              </button>
+              <div class="bars" aria-hidden="true">
+                <div class="bar-track"><div class="bar-fill cov" style="width: {Math.round(cat.coverage * 100)}%"></div></div>
+                <div class="bar-track"><div class="bar-fill dom" style="width: {Math.round(cat.mastery * 100)}%"></div></div>
+              </div>
+              {#if open}
+                {@const weakSubs = cat.topics.filter((t) => t.seen > 0 && t.state !== 'mastered')}
+                <div class="cat-detail">
+                  {#each weakSubs as t (t.topic)}
+                    <div class="subtopic">
+                      <span class="subtopic-name">{subtopicLabel(t.topic)}</span>
+                      <span class="topic-chip state-{t.state}">{STATE_LABEL[t.state]}</span>
+                      <span class="subtopic-dom">{Math.round(t.seenMastery * 100)}%</span>
+                    </div>
+                  {/each}
+                  {#if cat.masteredTopics > 0}
+                    <p class="dominados"><span aria-hidden="true">✓</span> Dominados ({cat.masteredTopics})</p>
+                  {/if}
+                  {#if weakSubs.length === 0 && cat.masteredTopics === 0}
+                    <p class="muted small-copy">Aún sin empezar.</p>
+                  {/if}
+                </div>
+              {/if}
             </li>
           {/each}
         </ul>
-      </section>
-    {/if}
+      {:else}
+        <p class="muted">Responde algunas preguntas y aquí verás tu avance por categoría.</p>
+      {/if}
+    </section>
 
     <div class="bank-note">
       <p class="muted small-copy">
@@ -644,76 +639,214 @@
 </main>
 
 <style>
-  .mastery-bar {
-    width: 96px;
-    height: 8px;
-    border-radius: 999px;
-    background: var(--line);
-    overflow: hidden;
-    flex: 0 0 auto;
-  }
-  .mastery-fill {
-    height: 100%;
-    background: linear-gradient(90deg, var(--red), #d1a03d 55%, var(--accent));
-    border-radius: 999px;
-  }
-  .weak-list li {
-    align-items: center;
-  }
-  .mini {
-    margin: 14px 0 6px;
-    font-size: 0.72rem;
-  }
   /* A section = a heading-group that HUGS its content (tight internal gaps),
      while the panel's own 24px gap separates whole sections. Kills the
      orphaned-heading / "looks empty" effect. */
   .insight-section {
     display: flex;
     flex-direction: column;
-    gap: 12px;
+    gap: 14px;
   }
   .section-head {
     display: flex;
     flex-direction: column;
     gap: 3px;
   }
-  .section-summary {
-    font-size: 0.85rem;
-    font-weight: 600;
+  .avance-head {
+    flex-direction: row;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 8px;
+  }
+  .legend {
+    display: inline-flex;
+    gap: 10px;
+    font-size: 0.7rem;
     color: var(--muted);
   }
-  .sub {
+  .legend-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+  }
+  .dot {
+    width: 14px;
+    height: 4px;
+    border-radius: 999px;
+    display: inline-block;
+  }
+  .dot.cov {
+    background: var(--amber);
+  }
+  .dot.dom {
+    background: var(--accent);
+  }
+
+  /* "Ahora reforzando" — exactly what the scheduler is drilling this round. */
+  .now-reinforcing {
+    background: var(--green-soft);
+    border: 1px solid #bfe0cd;
+    border-radius: 10px;
+    padding: 11px 12px;
+  }
+  .reinforce-title {
+    font-size: 0.7rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--accent-strong);
+    font-weight: 700;
+    margin: 0 0 8px;
+  }
+  .reinforce-chips {
     display: flex;
-    flex-direction: column;
+    flex-wrap: wrap;
     gap: 6px;
+    margin-bottom: 8px;
   }
-  .sub .mini {
+  .reinforce-chip {
+    background: var(--panel);
+    border: 1px solid #bfe0cd;
+    border-radius: 999px;
+    padding: 3px 9px;
+    font-size: 0.82rem;
+    color: var(--accent-strong);
+  }
+  .reinforce-reason {
+    font-size: 0.78rem;
+    color: #3f6b58;
     margin: 0;
   }
-  .sub .weak-list {
-    margin: 0;
-  }
-  .insight-section .topic-list {
-    margin: 0;
-  }
-  .topic-list {
-    margin: 12px 0 0;
-    padding: 0;
+
+  /* Category tree */
+  .cat-list {
     list-style: none;
+    margin: 0;
+    padding: 0;
     display: flex;
     flex-direction: column;
-    gap: 6px;
   }
-  .topic-list li {
+  .cat {
+    border-top: 1px solid var(--line);
+    padding: 11px 2px;
+  }
+  .cat.mastered {
+    opacity: 0.62;
+  }
+  .cat-head {
+    all: unset;
+    cursor: pointer;
     display: flex;
     align-items: center;
-    justify-content: space-between;
-    gap: 10px;
+    gap: 8px;
+    width: 100%;
   }
-  .topic-name {
-    font-weight: 700;
-    font-size: 0.9rem;
+  .cat-head:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
+  .chev {
+    font-size: 0.7rem;
+    color: #9a948a;
+    transition: transform 0.15s ease;
+    display: inline-block;
+  }
+  .chev.open {
+    transform: rotate(90deg);
+  }
+  .cat-name {
+    flex: 1;
+    font-size: 0.95rem;
+    font-weight: 600;
     overflow-wrap: anywhere;
+  }
+  .cat-flag {
+    flex: 0 0 auto;
+    border-radius: 999px;
+    padding: 2px 7px;
+    font-size: 0.7rem;
+    font-weight: 700;
+  }
+  .cat-flag.weak {
+    background: var(--red-soft);
+    color: #9c372b;
+  }
+  .cat-flag.ok {
+    color: var(--accent);
+    background: none;
+    padding: 0;
+  }
+  .cat-nums {
+    flex: 0 0 auto;
+    font-size: 0.74rem;
+    min-width: 70px;
+    text-align: right;
+  }
+  .cat-nums b {
+    color: var(--accent);
+    font-weight: 600;
+  }
+  .cat-nums i {
+    color: var(--amber);
+    font-style: normal;
+  }
+  .bars {
+    margin-top: 9px;
+    padding-left: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .bar-track {
+    height: 4px;
+    border-radius: 999px;
+    background: #ece5d7;
+    overflow: hidden;
+  }
+  .bar-fill {
+    height: 100%;
+    border-radius: 999px;
+  }
+  .bar-fill.cov {
+    background: var(--amber);
+  }
+  .bar-fill.dom {
+    background: var(--accent);
+  }
+  .cat-detail {
+    padding-left: 20px;
+    margin-top: 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .subtopic {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 4px 0;
+  }
+  .subtopic-name {
+    flex: 1;
+    font-size: 0.82rem;
+    color: #3a3833;
+    overflow-wrap: anywhere;
+  }
+  .subtopic-dom {
+    flex: 0 0 auto;
+    font-size: 0.74rem;
+    color: var(--accent);
+    min-width: 30px;
+    text-align: right;
+  }
+  .dominados {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 0 2px;
+    font-size: 0.76rem;
+    color: var(--muted);
+    margin: 0;
   }
   .topic-chip {
     flex: 0 0 auto;
@@ -736,10 +869,5 @@
     border-color: var(--blue);
     color: var(--blue);
     background: rgba(2, 132, 199, 0.1);
-  }
-  .topic-chip.state-mastered {
-    border-color: var(--accent);
-    color: var(--accent-strong);
-    background: var(--green-soft);
   }
 </style>

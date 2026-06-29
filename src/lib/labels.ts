@@ -70,6 +70,45 @@ export function topicLabel(topic: string): string {
   return topic
 }
 
+/**
+ * Topic label WITHOUT its category prefix, for rows shown INSIDE a category's detail
+ * (the category heading already supplies the context, so "verbo andare" → "andare").
+ * Topics whose label carries no category word (vocab, la hora, pronombres…) are returned
+ * unchanged.
+ */
+export function subtopicLabel(topic: string): string {
+  if (topic.startsWith('verb:')) return topic.slice(5)
+  const numMap: Record<string, string> = {
+    'num:ones': '1–10',
+    'num:teens': '11–19',
+    'num:tens': 'decenas (20–90)',
+    'num:hundreds': 'centenas',
+    'num:compound': 'compuestos',
+    'num:ordinal': 'ordinales',
+  }
+  if (numMap[topic]) return numMap[topic]
+  if (topic.startsWith('article:')) {
+    return topicLabel(topic).replace(/^artículos:?\s*/i, '') || topicLabel(topic)
+  }
+  return topicLabel(topic)
+}
+
+/** Human ES-MX label for a high-level sidebar category key (see categoryKeyOf). */
+export function categoryLabel(key: string): string {
+  const map: Record<string, string> = {
+    verbos: 'Verbos',
+    numeros: 'Números',
+    hora: 'La hora',
+    articulos: 'Artículos',
+    vocab: 'Vocabulario',
+    expresiones: 'Expresiones',
+    pronombres: 'Pronombres',
+    examen: 'Frases del examen',
+    otros: 'Otros',
+  }
+  return map[key] ?? key
+}
+
 export function skillLabel(skill: string): string {
   if (skill.startsWith('verb:')) return `verbo ${skill.slice(5)}`
   if (skill.startsWith('person:')) return `persona ${skill.slice(7)}`
