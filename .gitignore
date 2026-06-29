@@ -25,3 +25,9 @@ dist-ssr
 
 # Claude Code local settings (machine-specific)
 .claude/settings.local.json
+
+# Local scratch / planning files (not part of the project)
+claude-PLAN.md
+codex-PLAN.md
+antigravity_implementation_plan.md
+tmp/
