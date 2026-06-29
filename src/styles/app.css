@@ -1,0 +1,664 @@
+/* ============================================================================
+ * app.css — global visual system for Articoli Italiano.
+ * Ports the design language from the legacy styles.css (colors, feedback states,
+ * timer, stage-flash / shake / correct-flash animations) and adapts it for the new
+ * TYPED-answer flow. Svelte components add their own scoped styles on top; these
+ * globals are the shared vocabulary (tokens, stage, feedback, animations).
+ * ========================================================================== */
+
+:root {
+  color-scheme: light;
+  --bg: #f7f4ed;
+  --ink: #22211f;
+  --muted: #6d6860;
+  --line: #ded7ca;
+  --panel: #fffdf8;
+  --panel-2: #fffaf0;
+  --accent: #256f5b;
+  --accent-strong: #174f41;
+  --red: #b34235;
+  --red-soft: #f8e3df;
+  --green-soft: #dff0e6;
+  --yellow-soft: #fbefc8;
+  /* "casi correcto" near-miss accent state */
+  --amber: #b8860b;
+  --amber-strong: #8a6508;
+  --amber-soft: #fbefc8;
+  /* grammar accents (singular/plural) */
+  --blue: #0284c7;
+  --purple: #7e22ce;
+  --shadow: 0 22px 60px rgba(44, 39, 31, 0.14);
+  --radius: 8px;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  min-height: 100%;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  color: var(--ink);
+  background:
+    linear-gradient(135deg, rgba(37, 111, 91, 0.12), transparent 34%),
+    linear-gradient(315deg, rgba(179, 66, 53, 0.12), transparent 38%),
+    var(--bg);
+}
+
+button,
+select,
+input {
+  font: inherit;
+}
+
+h1,
+h2,
+h3,
+p {
+  margin: 0;
+}
+
+/* ── Layout shell ─────────────────────────────────────────────────────────── */
+
+.app-shell {
+  width: min(1180px, calc(100% - 32px));
+  min-height: 100vh;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 340px;
+  gap: 20px;
+  align-items: start;
+  padding: 28px 0;
+}
+
+.practice-panel,
+.insights-panel {
+  background: rgba(255, 253, 248, 0.92);
+  border: 1px solid rgba(222, 215, 202, 0.9);
+  box-shadow: var(--shadow);
+  backdrop-filter: blur(12px);
+  border-radius: var(--radius);
+}
+
+.practice-panel {
+  min-height: 760px;
+  padding: 28px;
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+  position: relative;
+}
+
+.insights-panel {
+  min-height: 760px;
+  padding: 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.eyebrow {
+  margin: 0 0 8px;
+  color: var(--accent);
+  font-size: 0.8rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+h1 {
+  max-width: 720px;
+  font-size: clamp(1.8rem, 4vw, 3.2rem);
+  line-height: 1;
+}
+
+h2 {
+  font-size: 1rem;
+}
+
+.muted,
+.hint,
+.translation {
+  color: var(--muted);
+}
+
+/* ── Status strip ─────────────────────────────────────────────────────────── */
+
+.status-strip {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+}
+
+.status-strip div {
+  min-height: 78px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.status-strip span {
+  font-size: 1.55rem;
+  font-weight: 800;
+}
+
+.status-strip small {
+  color: var(--muted);
+}
+
+/* ── Word stage (prompt area) ─────────────────────────────────────────────── */
+
+.word-stage {
+  min-height: 286px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background:
+    linear-gradient(90deg, rgba(37, 111, 91, 0.08), transparent 30%),
+    linear-gradient(270deg, rgba(179, 66, 53, 0.09), transparent 34%),
+    var(--panel-2);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 18px;
+  padding: 28px;
+  position: relative;
+  overflow: hidden;
+}
+
+.timer-shell {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 8px;
+  background: rgba(34, 33, 31, 0.08);
+}
+
+.timer-bar {
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, var(--accent), #d1a03d);
+  transform-origin: left center;
+  transition: transform 120ms linear;
+}
+
+.translation {
+  color: #817b72;
+  font-size: 1.08rem;
+  font-weight: 700;
+}
+
+.gloss-pill {
+  align-self: flex-start;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 4px 12px;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--muted);
+  background: var(--panel);
+}
+
+.grammar-plural {
+  color: var(--purple);
+}
+
+.grammar-singular {
+  color: var(--blue);
+}
+
+/* Prompt sentence with the inline blank */
+.prompt-text {
+  font-size: clamp(1.6rem, 4.2vw, 2.8rem);
+  line-height: 1.18;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+.prompt-figure {
+  font-size: clamp(3rem, 9vw, 7rem);
+  font-weight: 800;
+  line-height: 0.9;
+  color: var(--accent);
+}
+
+.prompt-cue {
+  color: var(--accent-strong);
+  font-weight: 800;
+}
+
+.hint {
+  min-height: 24px;
+  font-weight: 600;
+}
+
+/* ── Typed answer input ───────────────────────────────────────────────────── */
+
+.type-answer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+}
+
+.answer-input {
+  flex: 1 1 220px;
+  min-height: 64px;
+  border: 2px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--panel);
+  color: var(--ink);
+  padding: 0 18px;
+  font-size: 1.6rem;
+  font-weight: 700;
+  outline: none;
+  transition: border-color 120ms ease, background 120ms ease;
+}
+
+.answer-input:focus {
+  border-color: var(--accent);
+}
+
+.answer-input.is-correct {
+  border-color: var(--accent);
+  background: var(--green-soft);
+}
+
+.answer-input.is-near {
+  border-color: var(--amber);
+  background: var(--amber-soft);
+}
+
+.answer-input.is-wrong {
+  border-color: var(--red);
+  background: var(--red-soft);
+}
+
+/* Inline variant — the input sits inside the hero/task line where the blank is. */
+.answer-input.inline {
+  display: inline-block;
+  width: auto;
+  min-width: 130px;
+  flex: none;
+  vertical-align: baseline;
+  font-size: inherit;
+  font-weight: inherit;
+  min-height: 1.5em;
+  padding: 2px 12px;
+}
+
+/* ── Unified prompt-card anatomy (badges → hero → meaning → task → answer) ──── */
+
+.badge-row {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.badge {
+  border: 1px solid var(--accent);
+  color: var(--accent-strong);
+  background: rgba(37, 111, 91, 0.08);
+  border-radius: 999px;
+  padding: 2px 10px;
+  font-size: 0.74rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+.badge.warn {
+  border-color: var(--amber);
+  color: var(--amber-strong);
+  background: var(--amber-soft);
+}
+
+/* The hero is the largest line: the verb lemma, the numeral, or the blanked phrase. */
+.prompt-hero {
+  font-size: clamp(2.1rem, 5.5vw, 3.4rem);
+  font-weight: 800;
+  line-height: 1.06;
+  overflow-wrap: anywhere;
+}
+
+.prompt-hero.figure {
+  font-size: clamp(3rem, 9vw, 7rem);
+  line-height: 0.9;
+  color: var(--accent);
+}
+
+.prompt-meaning {
+  font-size: 1.1rem;
+  font-weight: 700;
+  font-style: italic;
+  color: var(--muted);
+}
+
+.prompt-task {
+  font-size: clamp(1.35rem, 3.4vw, 2.1rem);
+  font-weight: 700;
+  line-height: 1.2;
+  overflow-wrap: anywhere;
+}
+
+.blank-slot {
+  display: inline-block;
+  min-width: 70px;
+  padding: 0 8px;
+  border-bottom: 3px solid var(--accent);
+  color: var(--accent-strong);
+  font-weight: 800;
+  text-align: center;
+}
+
+.blank-slot.filled {
+  border-bottom-color: var(--line);
+}
+
+/* ── Buttons ──────────────────────────────────────────────────────────────── */
+
+.ghost-button {
+  min-height: 44px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--panel);
+  color: var(--ink);
+  padding: 0 16px;
+  font-weight: 800;
+  cursor: pointer;
+  transition: border-color 120ms ease, transform 120ms ease;
+}
+
+.ghost-button:hover {
+  border-color: var(--accent);
+}
+
+.ghost-button:active {
+  transform: translateY(1px);
+}
+
+.ghost-button.primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fffdf8;
+}
+
+.ghost-button.danger {
+  color: var(--red);
+}
+
+.segmented-control {
+  min-height: 44px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--panel);
+  display: inline-flex;
+  padding: 4px;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+
+.segment-button {
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--muted);
+  padding: 6px 12px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.segment-button.active {
+  background: var(--accent);
+  color: #fffdf8;
+}
+
+kbd {
+  min-width: 26px;
+  height: 26px;
+  border: 1px solid var(--line);
+  border-bottom-width: 3px;
+  border-radius: 6px;
+  background: #f3eee5;
+  display: inline-grid;
+  place-items: center;
+  font-size: 0.8rem;
+  font-weight: 800;
+}
+
+/* ── Feedback box (neutral / correct / near / wrong) ──────────────────────── */
+
+.feedback {
+  min-height: 92px;
+  border-radius: var(--radius);
+  border: 1px solid var(--line);
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 8px;
+  font-weight: 800;
+  line-height: 1.35;
+}
+
+.feedback.neutral {
+  background: var(--yellow-soft);
+}
+
+.feedback.correct {
+  background: var(--green-soft);
+  border-color: rgba(37, 111, 91, 0.35);
+}
+
+.feedback.near {
+  background: var(--amber-soft);
+  border-color: rgba(184, 134, 11, 0.4);
+}
+
+.feedback.wrong {
+  background: var(--red-soft);
+  border-color: rgba(179, 66, 53, 0.35);
+}
+
+.feedback-rule {
+  color: var(--muted);
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+
+.feedback-rule strong {
+  color: var(--ink);
+  font-weight: 900;
+}
+
+.feedback-answer {
+  font-size: 1.05rem;
+  font-weight: 900;
+}
+
+.feedback.correct .feedback-answer {
+  color: var(--accent-strong);
+}
+
+.feedback.near .feedback-answer {
+  color: var(--amber-strong);
+}
+
+.feedback.wrong .feedback-answer {
+  color: var(--red);
+}
+
+/* ── Weak lists (insights) ────────────────────────────────────────────────── */
+
+.weak-list {
+  margin: 12px 0 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.weak-list li {
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 10px 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.weak-list strong {
+  display: block;
+}
+
+.weak-list small {
+  color: var(--muted);
+}
+
+/* ── Round summary overlay ────────────────────────────────────────────────── */
+
+.summary-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  background: rgba(34, 33, 31, 0.34);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: 18px;
+}
+
+.summary-overlay.is-visible {
+  display: flex;
+}
+
+.summary-dialog {
+  width: min(720px, 100%);
+  max-height: min(760px, calc(100vh - 36px));
+  overflow: auto;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--panel);
+  box-shadow: var(--shadow);
+  padding: 22px;
+  display: grid;
+  gap: 18px;
+}
+
+/* ── Animations (ported) ──────────────────────────────────────────────────── */
+
+.shake {
+  animation: shakeWrong 280ms ease;
+}
+
+.timeout-pulse {
+  animation: timeoutPulse 360ms ease;
+}
+
+.word-stage.stage-flash {
+  animation: stageFlash 600ms ease;
+}
+
+.word-stage.stage-flash-near {
+  animation: stageFlashNear 600ms ease;
+}
+
+.word-stage.stage-flash-wrong {
+  animation: stageFlashWrong 600ms ease;
+}
+
+@keyframes shakeWrong {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-5px); }
+  50% { transform: translateX(5px); }
+  75% { transform: translateX(-3px); }
+}
+
+@keyframes correctFlash {
+  0% { transform: scale(1); }
+  45% { transform: scale(1.03); }
+  100% { transform: scale(1); }
+}
+
+@keyframes timeoutPulse {
+  0%, 100% { background: linear-gradient(90deg, var(--accent), #d1a03d); }
+  50% { background: var(--red); }
+}
+
+@keyframes stageFlash {
+  0%, 100% {
+    background-color: transparent;
+    border-color: var(--line);
+  }
+  30% {
+    background-color: var(--green-soft);
+    border-color: var(--accent);
+  }
+}
+
+@keyframes stageFlashNear {
+  0%, 100% {
+    background-color: transparent;
+    border-color: var(--line);
+  }
+  30% {
+    background-color: var(--amber-soft);
+    border-color: var(--amber);
+  }
+}
+
+@keyframes stageFlashWrong {
+  0%, 100% {
+    background-color: transparent;
+    border-color: var(--line);
+    transform: translateX(0);
+  }
+  15% { transform: translateX(-6px); }
+  30% {
+    background-color: var(--red-soft);
+    border-color: var(--red);
+    transform: translateX(6px);
+  }
+  45% { transform: translateX(-4px); }
+  60% { transform: translateX(2px); }
+}
+
+/* ── Responsive ───────────────────────────────────────────────────────────── */
+
+@media (max-width: 980px) {
+  .app-shell {
+    grid-template-columns: 1fr;
+  }
+
+  .practice-panel,
+  .insights-panel {
+    min-height: auto;
+  }
+}
+
+@media (max-width: 680px) {
+  .app-shell {
+    width: min(100% - 16px, 1180px);
+    padding: 8px 0;
+  }
+
+  .practice-panel,
+  .insights-panel {
+    padding: 16px;
+  }
+
+  .status-strip span {
+    font-size: 1.35rem;
+  }
+}
