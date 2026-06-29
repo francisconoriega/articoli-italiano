@@ -11,12 +11,13 @@
   } from './types'
   import { BLANK } from './types'
   import { PracticeSession, type SessionStats, type SubmitResult } from './engine/session'
-  import { daysUntil, categoryProgress, type TopicState, type CategoryInfo } from './engine/scheduler'
+  import { daysUntil, categoryProgress, type TopicState, type TopicInfo, type CategoryInfo } from './engine/scheduler'
   import { cardinalLesson } from './engine/numbers'
   import { explanationRules, catalog } from './content'
   import Practice from './lib/Practice.svelte'
   import Summary from './lib/Summary.svelte'
   import ConjugationTable from './lib/ConjugationTable.svelte'
+  import ReferenceCard from './lib/ReferenceCard.svelte'
   import { topicLabel, subtopicLabel, categoryLabel } from './lib/labels'
 
   let { items, store }: { items: Item[]; store: ProgressStore } = $props()
@@ -24,6 +25,16 @@
   // `items`/`store` are passed once at boot and never change — read them once.
   const session = untrack(() => new PracticeSession(items, store))
   const verbByInf = untrack(() => new Map(catalog.verbs.map((v) => [v.infinitive, v])))
+  // Items grouped by topic — feeds the click-to-open reference (cheat-sheet) per subtopic.
+  const itemsByTopic = untrack(() => {
+    const m = new Map<string, Item[]>()
+    for (const it of items) {
+      const arr = m.get(it.topic)
+      if (arr) arr.push(it)
+      else m.set(it.topic, [it])
+    }
+    return m
+  })
   const now = () => Date.now()
 
   // ── Reactive view state ───────────────────────────────────────────────────
@@ -119,6 +130,36 @@
   }
   function toggleCat(key: string): void {
     openCats = { ...openCats, [key]: !isOpen(key) }
+  }
+
+  // Click-to-open reference (cheat-sheet) for a subtopic: a verb's conjugation table,
+  // or a cue→answer list (numbers, ordinales, la hora, vocab…). One open at a time.
+  let openReference = $state<string | null>(null)
+  function toggleReference(topic: string): void {
+    openReference = openReference === topic ? null : topic
+  }
+  // Per-category "Dominados (N)" expand toggle (reveals the mastered subtopics).
+  let openDominados = $state<Record<string, boolean>>({})
+  function toggleDominados(key: string): void {
+    openDominados = { ...openDominados, [key]: !openDominados[key] }
+  }
+  /** Catalog verb entry for a verb:* topic (null for non-verb topics). */
+  function verbFor(topic: string) {
+    return topic.startsWith('verb:') ? (verbByInf.get(topic.slice(5)) ?? null) : null
+  }
+  /** Reference rows (cue → answer) for a non-verb topic, derived from its items. */
+  function referenceRows(topic: string): Array<{ cue: string; answer: string }> {
+    const list = itemsByTopic.get(topic) ?? []
+    const isOrdinal = topic.startsWith('num:ordinal')
+    const hasFigures = list.length > 0 && list.every((it) => typeof it.prompt.figure === 'number')
+    const sorted = hasFigures ? [...list].sort((a, b) => (a.prompt.figure ?? 0) - (b.prompt.figure ?? 0)) : list
+    return sorted.map((it) => {
+      let cue: string
+      if (typeof it.prompt.figure === 'number') cue = isOrdinal ? `${it.prompt.figure}°` : String(it.prompt.figure)
+      else if (it.kind === 'tell-time') cue = it.prompt.text
+      else cue = it.gloss ?? it.prompt.text.replace(BLANK, '___').trim()
+      return { cue, answer: it.answer }
+    })
   }
 
   // ── Timer ─────────────────────────────────────────────────────────────────
@@ -577,6 +618,37 @@
         </div>
       {/if}
 
+      {#snippet subtopicRow(t: TopicInfo)}
+        {@const refOpen = openReference === t.topic}
+        <button
+          type="button"
+          class="subtopic"
+          class:selected={refOpen}
+          aria-expanded={refOpen}
+          onclick={() => toggleReference(t.topic)}
+        >
+          <span class="subref-chev" class:open={refOpen} aria-hidden="true">▶</span>
+          <span class="subtopic-name">{subtopicLabel(t.topic)}</span>
+          <span class="topic-chip state-{t.state}">{STATE_LABEL[t.state]}</span>
+          <span class="subtopic-dom">{Math.round(t.seenMastery * 100)}%</span>
+        </button>
+        {#if refOpen}
+          {@const verb = verbFor(t.topic)}
+          <div class="subtopic-ref">
+            {#if verb && verb.tenses.presente}
+              <ConjugationTable infinitive={verb.infinitive} gloss={verb.gloss} table={verb.tenses.presente} />
+            {:else}
+              {@const rows = referenceRows(t.topic)}
+              {#if rows.length}
+                <ReferenceCard title={topicLabel(t.topic)} rows={rows} />
+              {:else}
+                <p class="muted small-copy">Sin referencia para este tema.</p>
+              {/if}
+            {/if}
+          </div>
+        {/if}
+      {/snippet}
+
       {#if categoryRows.length}
         <ul class="cat-list">
           {#each categoryRows as cat (cat.key)}
@@ -601,18 +673,32 @@
               </div>
               {#if open}
                 {@const weakSubs = cat.topics.filter((t) => t.seen > 0 && t.state !== 'mastered')}
+                {@const masteredSubs = cat.topics.filter((t) => t.state === 'mastered')}
+                {@const domOpen = openDominados[cat.key] ?? false}
                 <div class="cat-detail">
                   {#each weakSubs as t (t.topic)}
-                    <div class="subtopic">
-                      <span class="subtopic-name">{subtopicLabel(t.topic)}</span>
-                      <span class="topic-chip state-{t.state}">{STATE_LABEL[t.state]}</span>
-                      <span class="subtopic-dom">{Math.round(t.seenMastery * 100)}%</span>
-                    </div>
+                    {@render subtopicRow(t)}
                   {/each}
-                  {#if cat.masteredTopics > 0}
-                    <p class="dominados"><span aria-hidden="true">✓</span> Dominados ({cat.masteredTopics})</p>
+                  {#if masteredSubs.length > 0}
+                    <button
+                      type="button"
+                      class="dominados"
+                      aria-expanded={domOpen}
+                      onclick={() => toggleDominados(cat.key)}
+                    >
+                      <span class="subref-chev" class:open={domOpen} aria-hidden="true">▶</span>
+                      <span class="dominados-check" aria-hidden="true">✓</span>
+                      Dominados ({masteredSubs.length})
+                    </button>
+                    {#if domOpen}
+                      <div class="dominados-children">
+                        {#each masteredSubs as t (t.topic)}
+                          {@render subtopicRow(t)}
+                        {/each}
+                      </div>
+                    {/if}
                   {/if}
-                  {#if weakSubs.length === 0 && cat.masteredTopics === 0}
+                  {#if weakSubs.length === 0 && masteredSubs.length === 0}
                     <p class="muted small-copy">Aún sin empezar.</p>
                   {/if}
                 </div>
@@ -821,10 +907,36 @@
     gap: 4px;
   }
   .subtopic {
+    all: unset;
+    cursor: pointer;
     display: flex;
     align-items: center;
     gap: 8px;
-    padding: 4px 0;
+    padding: 4px 2px;
+    width: 100%;
+    border-radius: 4px;
+  }
+  .subtopic:hover {
+    background: rgba(37, 111, 91, 0.06);
+  }
+  .subtopic:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 1px;
+  }
+  .subtopic.selected {
+    background: var(--green-soft);
+  }
+  .subref-chev {
+    flex: 0 0 auto;
+    font-size: 0.6rem;
+    color: #9a948a;
+    transition: transform 0.15s ease;
+  }
+  .subref-chev.open {
+    transform: rotate(90deg);
+  }
+  .subtopic-ref {
+    margin: 4px 0 10px;
   }
   .subtopic-name {
     flex: 1;
@@ -840,13 +952,33 @@
     text-align: right;
   }
   .dominados {
+    all: unset;
+    cursor: pointer;
     display: flex;
     align-items: center;
     gap: 6px;
-    padding: 6px 0 2px;
+    padding: 6px 2px 4px;
     font-size: 0.76rem;
     color: var(--muted);
-    margin: 0;
+    width: 100%;
+    border-radius: 4px;
+  }
+  .dominados:hover {
+    background: rgba(37, 111, 91, 0.06);
+  }
+  .dominados:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 1px;
+  }
+  .dominados-check {
+    color: var(--accent);
+  }
+  /* Mastered subtopics sit visually inside the "Dominados" group. */
+  .dominados-children {
+    padding-left: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
   }
   .topic-chip {
     flex: 0 0 auto;
@@ -869,5 +1001,10 @@
     border-color: var(--blue);
     color: var(--blue);
     background: rgba(2, 132, 199, 0.1);
+  }
+  .topic-chip.state-mastered {
+    border-color: var(--accent);
+    color: var(--accent-strong);
+    background: var(--green-soft);
   }
 </style>
