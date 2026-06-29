@@ -24,6 +24,7 @@ import { saveStore, exportStoreJson, importStoreJson, mergeStores } from './stor
 import { chooseNext, poolForMode, scheduleRecentMiss, pickRecentMiss, type RecentMiss } from './select'
 import { buildChoices, presentationFor, presentationForItem, CHOICE_ONLY_KINDS } from './choices'
 import { composeRound, topicInfos, type RoundPlan, type TopicState, type TopicInfo } from './scheduler'
+import { decorateItem } from './frames'
 
 export const ROUND_SIZE = 15
 
@@ -235,13 +236,17 @@ export class PracticeSession {
       item = res.item
     }
 
-    this.current = item
+    // Presentation-only decoration: a verb item may be shown inside a fresh contextual
+    // sentence (engine/frames.ts). id/answer/skills/topic are preserved, so all the
+    // bookkeeping below (servedIds, mini-lesson, mastery on record) is unaffected.
+    const shown = item ? decorateItem(item) : null
+    this.current = shown
     this.startedAt = now
-    if (item) this.servedIds.add(item.id)
-    this.currentTopic = item?.topic ?? null
-    this.isMiniLesson = item ? this.miniLessonSet.has(item.id) : false
-    this.computePresentation(item)
-    return item
+    if (shown) this.servedIds.add(shown.id)
+    this.currentTopic = shown?.topic ?? null
+    this.isMiniLesson = shown ? this.miniLessonSet.has(shown.id) : false
+    this.computePresentation(shown)
+    return shown
   }
 
   /** Stage-driven presentation (input mode, gloss, distractor difficulty) for the item. */
