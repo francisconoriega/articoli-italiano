@@ -8,6 +8,7 @@ import { svelte } from '@sveltejs/vite-plugin-svelte'
 export default defineConfig(({ command }) => ({
   base: command === 'build' ? '/articoli-italiano/' : '/',
   // Expose the dev server on the LAN (accessible via the machine's IP, e.g. for phone testing).
-  server: { host: true },
+  // Honor a PORT env var (preview tooling assigns one) but default to vite's 5173.
+  server: { host: true, port: Number(process.env.PORT) || 5173 },
   plugins: [svelte()],
 }))
