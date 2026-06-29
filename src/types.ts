@@ -268,6 +268,13 @@ export interface Settings {
    */
   skillPrimedGraduation: boolean;
   /**
+   * Underline the stressed syllable (sílaba tónica) of 3+ syllable Italian words
+   * on prompt cards — the hero word and multiple-choice options — as a
+   * pronunciation aid. Default on; the sidebar conjugation cheat-sheet always
+   * shows its stress mark regardless. Absent on legacy stores → defaults on.
+   */
+  tonicStress: boolean;
+  /**
    * OPTIONAL exam date as an ISO yyyy-mm-dd string, or null when unset (the default).
    * When set, the scheduler ramps the blend toward review/coverage as the date nears.
    * Never hardcode a date anywhere — this is purely a user-set knob.
@@ -282,6 +289,7 @@ export const DEFAULT_SETTINGS: Settings = {
   showGloss: true,
   assist: true,
   skillPrimedGraduation: true,
+  tonicStress: true,
   examDate: null,
 };
 

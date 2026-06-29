@@ -363,6 +363,26 @@ h2 {
   border-bottom-color: var(--line);
 }
 
+/* Sílaba tónica — underline the stressed syllable as a pronunciation aid.
+   `.stress` is the conjugation cheat-sheet's marker (one vowel, always shown). */
+.stress {
+  text-decoration: underline;
+  text-decoration-thickness: 2px;
+  text-underline-offset: 2px;
+  text-decoration-color: var(--accent);
+}
+
+/* `.tonic` marks the whole stressed syllable on prompt cards (hero word +
+   multiple-choice options: àl·be·ro → "al"). Deliberately more DISCREET than the
+   sidebar's `.stress` — thinner and softer — so it whispers the stress without
+   competing with the answer blank. Toggle via Settings.tonicStress. */
+.tonic {
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+  text-decoration-color: color-mix(in srgb, var(--accent) 50%, transparent);
+}
+
 /* ── Buttons ──────────────────────────────────────────────────────────────── */
 
 .ghost-button {

@@ -158,11 +158,6 @@
     color: var(--accent-strong);
   }
 
-  /* Sílaba tónica — underline the stressed vowel (pronunciation aid). */
-  .stress {
-    text-decoration: underline;
-    text-decoration-thickness: 2px;
-    text-underline-offset: 2px;
-    text-decoration-color: var(--accent);
-  }
+  /* `.stress` (sílaba tónica underline) is defined globally in styles/app.css so
+     the conjugation cheat-sheet and the single-word hero prompts share one rule. */
 </style>
