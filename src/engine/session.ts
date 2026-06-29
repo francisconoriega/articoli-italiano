@@ -22,7 +22,7 @@ import { applyAnswer, createItemProgress, rollUpSkill } from './mastery'
 import { createPrimedItemProgress } from './priming'
 import { saveStore, exportStoreJson, importStoreJson, mergeStores } from './storage'
 import { chooseNext, poolForMode, scheduleRecentMiss, pickRecentMiss, type RecentMiss } from './select'
-import { buildChoices, presentationFor, presentationForItem } from './choices'
+import { buildChoices, presentationFor, presentationForItem, CHOICE_ONLY_KINDS } from './choices'
 import { composeRound, topicInfos, type RoundPlan, type TopicState, type TopicInfo } from './scheduler'
 
 export const ROUND_SIZE = 15
@@ -259,8 +259,10 @@ export class PracticeSession {
     const stage = this.store.settings.skillPrimedGraduation
       ? presentationForItem(progress, item, this.store.skills)
       : presentationFor(progress)
-    this.currentMode = this.store.settings.assist ? stage.input : 'type'
-    this.currentShowGloss = stage.gloss && this.store.settings.showGloss
+    // Choice-only kinds (pragmatics) stay multiple-choice regardless of level/assist.
+    const choiceOnly = CHOICE_ONLY_KINDS.has(item.kind)
+    this.currentMode = choiceOnly ? 'choice' : this.store.settings.assist ? stage.input : 'type'
+    this.currentShowGloss = (choiceOnly || stage.gloss) && this.store.settings.showGloss
     this.currentChoices = this.currentMode === 'choice' ? buildChoices(item, this.allItems, 4) : []
   }
 

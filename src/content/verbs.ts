@@ -454,4 +454,177 @@ export const verbs: VerbEntry[] = [
     },
     unit: 1,
   },
+
+  // ── Más irregulares de alta frecuencia (brief §3) ────────────────────────────
+  {
+    id: 'dire',
+    infinitive: 'dire',
+    gloss: 'decir',
+    class: 'irregular',
+    tenses: {
+      presente: { io: 'dico', tu: 'dici', lui: 'dice', noi: 'diciamo', voi: 'dite', loro: 'dicono' },
+    },
+    unit: 2,
+    examWeight: 3,
+  },
+  {
+    id: 'bere',
+    infinitive: 'bere',
+    gloss: 'beber/tomar',
+    class: 'irregular',
+    tenses: {
+      presente: { io: 'bevo', tu: 'bevi', lui: 'beve', noi: 'beviamo', voi: 'bevete', loro: 'bevono' },
+    },
+    unit: 2,
+    examWeight: 3,
+  },
+  // Familia -go/-gono (io/loro): aprende una, las demás siguen el patrón.
+  {
+    id: 'scegliere',
+    infinitive: 'scegliere',
+    gloss: 'elegir/escoger',
+    class: 'irregular',
+    tenses: {
+      presente: { io: 'scelgo', tu: 'scegli', lui: 'sceglie', noi: 'scegliamo', voi: 'scegliete', loro: 'scelgono' },
+    },
+    unit: 2,
+    examWeight: 2,
+  },
+  {
+    id: 'tenere',
+    infinitive: 'tenere',
+    gloss: 'tener/sostener',
+    class: 'irregular',
+    tenses: {
+      presente: { io: 'tengo', tu: 'tieni', lui: 'tiene', noi: 'teniamo', voi: 'tenete', loro: 'tengono' },
+    },
+    unit: 2,
+    examWeight: 2,
+  },
+  {
+    id: 'rimanere',
+    infinitive: 'rimanere',
+    gloss: 'quedarse/permanecer',
+    class: 'irregular',
+    tenses: {
+      presente: { io: 'rimango', tu: 'rimani', lui: 'rimane', noi: 'rimaniamo', voi: 'rimanete', loro: 'rimangono' },
+    },
+    unit: 2,
+    examWeight: 2,
+  },
+  {
+    id: 'salire',
+    infinitive: 'salire',
+    gloss: 'subir',
+    class: 'irregular',
+    tenses: {
+      presente: { io: 'salgo', tu: 'sali', lui: 'sale', noi: 'saliamo', voi: 'salite', loro: 'salgono' },
+    },
+    unit: 2,
+    examWeight: 2,
+  },
+  {
+    id: 'sedere',
+    infinitive: 'sedere',
+    gloss: 'sentarse',
+    class: 'irregular',
+    tenses: {
+      presente: { io: 'siedo', tu: 'siedi', lui: 'siede', noi: 'sediamo', voi: 'sedete', loro: 'siedono' },
+    },
+    unit: 2,
+    examWeight: 2,
+  },
+  {
+    id: 'spegnere',
+    infinitive: 'spegnere',
+    gloss: 'apagar',
+    class: 'irregular',
+    tenses: {
+      presente: { io: 'spengo', tu: 'spegni', lui: 'spegne', noi: 'spegniamo', voi: 'spegnete', loro: 'spengono' },
+    },
+    unit: 2,
+    examWeight: 2,
+  },
+  // Familia tradurre (produrre, ridurre) y porre (proporre, esporre).
+  {
+    id: 'tradurre',
+    infinitive: 'tradurre',
+    gloss: 'traducir',
+    class: 'irregular',
+    tenses: {
+      presente: { io: 'traduco', tu: 'traduci', lui: 'traduce', noi: 'traduciamo', voi: 'traducete', loro: 'traducono' },
+    },
+    unit: 2,
+    examWeight: 2,
+  },
+  {
+    id: 'trarre',
+    infinitive: 'trarre',
+    gloss: 'sacar/extraer',
+    class: 'irregular',
+    tenses: {
+      presente: { io: 'traggo', tu: 'trai', lui: 'trae', noi: 'traiamo', voi: 'traete', loro: 'traggono' },
+    },
+    unit: 2,
+    examWeight: 2,
+  },
+  {
+    id: 'porre',
+    infinitive: 'porre',
+    gloss: 'poner/colocar',
+    class: 'irregular',
+    tenses: {
+      presente: { io: 'pongo', tu: 'poni', lui: 'pone', noi: 'poniamo', voi: 'ponete', loro: 'pongono' },
+    },
+    unit: 2,
+    examWeight: 2,
+  },
+  {
+    id: 'morire',
+    infinitive: 'morire',
+    gloss: 'morir',
+    class: 'irregular',
+    tenses: {
+      presente: { io: 'muoio', tu: 'muori', lui: 'muore', noi: 'moriamo', voi: 'morite', loro: 'muoiono' },
+    },
+    unit: 2,
+    examWeight: 2,
+  },
+  {
+    id: 'piacere',
+    infinitive: 'piacere',
+    gloss: 'gustar',
+    class: 'irregular',
+    tenses: {
+      presente: { io: 'piaccio', tu: 'piaci', lui: 'piace', noi: 'piacciamo', voi: 'piacete', loro: 'piacciono' },
+    },
+    unit: 2,
+    examWeight: 2,
+  },
+
+  // ── Más verbos ortográficos (brief §2) ───────────────────────────────────────
+  {
+    id: 'spiegare',
+    infinitive: 'spiegare',
+    gloss: 'explicar',
+    class: 'are',
+    tenses: {
+      presente: { io: 'spiego', tu: 'spieghi', lui: 'spiega', noi: 'spieghiamo', voi: 'spiegate', loro: 'spiegano' },
+    },
+    unit: 1,
+    examWeight: 2,
+    tags: ['spelling'],
+  },
+  {
+    id: 'cominciare',
+    infinitive: 'cominciare',
+    gloss: 'empezar/comenzar',
+    class: 'are',
+    tenses: {
+      presente: { io: 'comincio', tu: 'cominci', lui: 'comincia', noi: 'cominciamo', voi: 'cominciate', loro: 'cominciano' },
+    },
+    unit: 1,
+    examWeight: 2,
+    tags: ['spelling'],
+  },
 ];

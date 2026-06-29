@@ -25,6 +25,8 @@ export function modeLabel(mode: PracticeMode): string {
     articles: 'Artículos',
     numbers: 'Números',
     vocab: 'Vocabulario',
+    time: 'La hora',
+    functional: 'Expresiones',
     'exam-drill': 'Examen',
   }
   return map[mode]
@@ -35,9 +37,14 @@ export function topicLabel(topic: string): string {
   if (topic.startsWith('verb:')) return `verbo ${topic.slice(5)}`
   if (topic.startsWith('vocab:')) {
     const c = topic.slice(6)
-    return c === 'body' ? 'partes del cuerpo' : c
+    if (c === 'body') return 'partes del cuerpo'
+    if (c === 'days') return 'días de la semana'
+    return c
   }
   if (topic === 'pronoun') return 'pronombres'
+  if (topic === 'motion') return 'movimiento (andare/venire/uscire)'
+  if (topic === 'time') return 'la hora'
+  if (topic === 'functional') return 'expresiones útiles'
   if (topic === 'exam') return 'frases del examen'
   const numMap: Record<string, string> = {
     'num:ones': 'números 1–10',
@@ -84,10 +91,20 @@ export function skillLabel(skill: string): string {
     if (n === 'elision') return 'excepciones (elisión)'
     return `números (${n})`
   }
-  if (skill.startsWith('vocab:')) return skill.slice(6)
+  if (skill.startsWith('vocab:')) {
+    const c = skill.slice(6)
+    if (c === 'body') return 'partes del cuerpo'
+    if (c === 'days') return 'días de la semana'
+    return c
+  }
+  if (skill.startsWith('time:')) return 'la hora'
+  if (skill.startsWith('functional:')) return 'expresiones útiles'
   if (skill.startsWith('idiom:')) return `modismo ${skill.slice(6).replace(/-/g, ' ')}`
   if (skill === 'essere') return 'verbo essere'
   if (skill === 'avere') return 'verbo avere'
   if (skill === 'pronoun') return 'pronombres'
+  if (skill === 'motion') return 'movimiento (andare/venire/uscire)'
+  if (skill === 'time') return 'la hora'
+  if (skill === 'functional') return 'expresiones útiles'
   return skill
 }

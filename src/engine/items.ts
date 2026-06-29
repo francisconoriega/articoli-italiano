@@ -84,6 +84,16 @@ function verbRuleTag(verb: VerbEntry): string | undefined {
 }
 
 /**
+ * Spelling-rule tag for -care/-gare (the -h- in tu/noi → verb_spelling_h) vs
+ * -ciare/-giare (no doubled i → verb_spelling_i). Only fires when the verb is
+ * flagged with the 'spelling' tag.
+ */
+function verbSpellingRuleTag(verb: VerbEntry): string | undefined {
+  if (!verb.tags?.includes('spelling')) return undefined
+  return /(?:ciare|giare)$/.test(verb.infinitive) ? 'rule:verb_spelling_i' : 'rule:verb_spelling_h'
+}
+
+/**
  * Curriculum sub-skill: "base" proper names (0-19), round tens/hundreds, or
  * compounds. Learners master base names first, then families, then compounds.
  */
@@ -178,7 +188,12 @@ function verbToItems(verb: VerbEntry): Item[] {
   const items: Item[] = []
   const classSkills = verbClassSkills(verb)
   const ruleTag = verbRuleTag(verb)
-  const tags = [...(verb.tags ?? []), ...(ruleTag ? [ruleTag] : [])]
+  const spellingTag = verbSpellingRuleTag(verb)
+  const tags = [
+    ...(verb.tags ?? []),
+    ...(ruleTag ? [ruleTag] : []),
+    ...(spellingTag ? [spellingTag] : []),
+  ]
 
   for (const tense of Object.keys(verb.tenses) as Array<keyof typeof verb.tenses>) {
     const table = verb.tenses[tense]
@@ -263,6 +278,18 @@ function numbersToItems(ranges: NumberRange[]): Item[] {
   return items
 }
 
+/** Human hint per vocab category shown under the Spanish cue. */
+function vocabCategoryHint(category: string): string {
+  switch (category) {
+    case 'body':
+      return 'parte del cuerpo'
+    case 'days':
+      return 'día de la semana'
+    default:
+      return category
+  }
+}
+
 function vocabToItems(entry: VocabEntry): Item[] {
   // For "piedi"/"occhi" we also accept the singular form.
   const accept = entry.id === 'piedi' ? ['piede'] : entry.id === 'occhi' ? ['occhio'] : undefined
@@ -273,7 +300,7 @@ function vocabToItems(entry: VocabEntry): Item[] {
       topic: `vocab:${entry.category}`,
       prompt: {
         text: entry.gloss,
-        hint: `${entry.category === 'body' ? 'parte del cuerpo' : entry.category} — escribe en italiano`,
+        hint: `${vocabCategoryHint(entry.category)} — escribe en italiano`,
       },
       answer: entry.term,
       accept,
@@ -302,6 +329,24 @@ function pronounToItems(entry: PronounEntry): Item[] {
   ]
 }
 
+/** Scheduler topic (mini-lesson grouping) for a sentence item, by kind. */
+function sentenceTopic(entry: SentenceEntry, skills: string[]): string {
+  switch (entry.kind) {
+    case 'tell-time':
+      return 'time'
+    case 'functional-choice':
+      return 'functional'
+    case 'verb-choice':
+      return 'motion'
+    case 'pronoun':
+      return 'pronoun'
+    case 'vocab':
+      return skills.find((s) => s.startsWith('vocab:')) ?? 'vocab'
+    default:
+      return entry.lemma ? `verb:${entry.lemma}` : 'exam'
+  }
+}
+
 function sentenceToItems(entry: SentenceEntry): Item[] {
   // Derive skills from kind/lemma/person when the author didn't supply them.
   const derived: string[] = []
@@ -310,7 +355,7 @@ function sentenceToItems(entry: SentenceEntry): Item[] {
   }
   if (entry.person) derived.push(`person:${entry.person}`)
   const skills = entry.skills && entry.skills.length ? entry.skills : derived
-  const topic = entry.lemma ? `verb:${entry.lemma}` : 'exam'
+  const topic = sentenceTopic(entry, skills)
 
   return [
     {
@@ -325,6 +370,7 @@ function sentenceToItems(entry: SentenceEntry): Item[] {
       unit: entry.unit,
       examWeight: entry.examWeight ?? 2,
       source: entry.source,
+      tags: entry.tags,
     },
   ]
 }
