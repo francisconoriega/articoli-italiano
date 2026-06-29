@@ -46,6 +46,16 @@ export function presentationForItem(
 const DEF_ARTICLES = ['il', 'lo', 'la', "l'", 'i', 'gli', 'le']
 const INDEF_ARTICLES = ['un', 'uno', 'una', "un'"]
 
+/**
+ * Kinds that are ALWAYS presented as multiple-choice (never free typing): a
+ * pragmatics task ('functional-choice') is a recognition exercise — typing a full
+ * reply makes no sense. engine/session.ts forces 'choice' for these.
+ */
+export const CHOICE_ONLY_KINDS: ReadonlySet<string> = new Set(['functional-choice'])
+
+/** The motion verbs whose forms distract each other in the deixis lane. */
+const MOTION_VERBS = ['verb:andare', 'verb:venire', 'verb:uscire']
+
 /** The verb-family skill key for a verb item, or null. */
 function verbKey(item: Item): string | null {
   const v = item.skills.find((s) => s.startsWith('verb:'))
@@ -107,6 +117,18 @@ export function buildChoices(
         )
       }
     }
+  } else if (item.kind === 'verb-choice') {
+    // Deixis: distractors are the SAME-person forms of the other motion verbs
+    // (vado/vieni/esco…) so the choice — not the person — is what's tested.
+    const person = personKey(item)
+    candidates = allItems
+      .filter(
+        (i) =>
+          i.kind === 'verb-conjugation' &&
+          MOTION_VERBS.some((v) => i.skills.includes(v)) &&
+          (!person || i.skills.includes(person)),
+      )
+      .map((i) => i.answer)
   } else if (item.kind === 'article') {
     candidates = (INDEF_ARTICLES.includes(correct) ? INDEF_ARTICLES : DEF_ARTICLES).slice()
   } else if (item.kind === 'number') {

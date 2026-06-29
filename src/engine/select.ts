@@ -22,13 +22,19 @@ const RECENT_MISS_CHANCE = 0.45
 export function poolForMode(items: Item[], mode: PracticeMode): Item[] {
   switch (mode) {
     case 'verbs':
-      return items.filter((i) => i.kind === 'verb-conjugation' || i.kind === 'essere-avere')
+      return items.filter(
+        (i) => i.kind === 'verb-conjugation' || i.kind === 'essere-avere' || i.kind === 'verb-choice',
+      )
     case 'articles':
       return items.filter((i) => i.kind === 'article')
     case 'numbers':
       return items.filter((i) => i.kind === 'number')
     case 'vocab':
       return items.filter((i) => i.kind === 'vocab' || i.kind === 'pronoun')
+    case 'time':
+      return items.filter((i) => i.kind === 'tell-time')
+    case 'functional':
+      return items.filter((i) => i.kind === 'functional-choice')
     case 'exam-drill':
       // Phase 1A: a simple exam-weighted lane (the proportional composer lands in 1B).
       return items.filter((i) => i.examWeight >= 2 && i.kind !== 'agreement')

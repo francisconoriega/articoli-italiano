@@ -73,7 +73,10 @@ export type ItemKind =
   | 'agreement' // Ex2 — gender/number endings, multi-blank (Phase 1B)
   | 'number' // Ex6 — numeral shown, type the Italian word
   | 'vocab' // Ex7 — gloss/image cue, type the Italian word
-  | 'pronoun'; // subject-pronoun drill (supports the verb lane)
+  | 'pronoun' // subject-pronoun drill (supports the verb lane)
+  | 'verb-choice' // deixis: choose+conjugate the right motion verb (lemma NOT given)
+  | 'tell-time' // "che ore sono?" — clock shown, produce the Italian time phrase
+  | 'functional-choice'; // pragmatics: pick the coherent reply (always multiple-choice)
 
 /* ────────────────────────────────────────────────────────────────────────────
  * 3. The generic Item (unit of practice AND of mastery)
@@ -249,7 +252,15 @@ export type SkillId = string;
  * ──────────────────────────────────────────────────────────────────────────── */
 
 /** Practice modes. 1A ships "mixed" + focused single-lane; "exam-drill" lands in 1B. */
-export type PracticeMode = 'mixed' | 'verbs' | 'articles' | 'numbers' | 'vocab' | 'exam-drill';
+export type PracticeMode =
+  | 'mixed'
+  | 'verbs'
+  | 'articles'
+  | 'numbers'
+  | 'vocab'
+  | 'time'
+  | 'functional'
+  | 'exam-drill';
 
 export interface Settings {
   timerEnabled: boolean;
@@ -443,6 +454,8 @@ export interface SentenceEntry {
   gloss?: string;
   /** Extra skills beyond what the generator infers from kind/lemma/person. */
   skills?: SkillId[];
+  /** Free-form tags carried onto the item, e.g. ["rule:verb_spelling_h"] for feedback. */
+  tags?: string[];
   unit: number;
   examWeight?: number;
   source?: string[];
