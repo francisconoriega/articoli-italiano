@@ -384,6 +384,38 @@
     examDate = date // the ramp takes effect from the next composed round
   }
 
+  function onExport() {
+    const json = session.exportJson()
+    const blob = new Blob([json], { type: 'application/json' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `articoli-progreso-${new Date().toISOString().slice(0, 10)}.json`
+    a.click()
+    URL.revokeObjectURL(url)
+  }
+
+  function onImport(json: string) {
+    try {
+      session.importJson(json, now())
+    } catch {
+      window.alert('Archivo de progreso inválido.')
+      return
+    }
+    summary = null
+    endingRound = false
+    clearBanner()
+    clearBeat()
+    value = ''
+    result = null
+    explanation = ''
+    selected = null
+    phase = 'answering'
+    sync()
+    flash('')
+    startTimer()
+  }
+
   function onReset() {
     if (!window.confirm('¿Borrar todo tu progreso guardado en este navegador? No se puede deshacer.')) return
     summary = null
@@ -502,6 +534,8 @@
     {onToggleTimer}
     {onToggleAssist}
     {onSetExamDate}
+    {onExport}
+    {onImport}
     {onReset}
   />
 

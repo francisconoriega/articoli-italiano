@@ -1,5 +1,63 @@
-import { defineConfig } from 'vite'
+import { defineConfig, type PluginOption } from 'vite'
 import { svelte } from '@sveltejs/vite-plugin-svelte'
+import { homedir } from 'node:os'
+import { join } from 'node:path'
+import { readFileSync, writeFileSync, existsSync } from 'node:fs'
+import { mergeProgress } from './scripts/dev-progress-merge.mjs'
+
+/**
+ * DEV-ONLY cross-port progress sync (the "broker", see STORAGE.md).
+ * Two `npm run dev` instances on different ports are different ORIGINS and can't
+ * share localStorage. This middleware persists ONE shared JSON file on disk; the app
+ * GET/POSTs it at /__progress so studying is unified across ports. `apply: 'serve'`
+ * keeps it entirely OUT of the production build (GitHub Pages → plain localStorage).
+ */
+function devProgressSync(): PluginOption {
+  const file = join(homedir(), '.articoli-progreso-dev.json')
+  return {
+    name: 'articoli-dev-progress-sync',
+    apply: 'serve',
+    configureServer(server) {
+      server.middlewares.use('/__progress', (req, res) => {
+        if (req.method === 'GET') {
+          let body = '{}'
+          try {
+            if (existsSync(file)) body = readFileSync(file, 'utf8') || '{}'
+          } catch {
+            /* no shared file yet → empty */
+          }
+          res.setHeader('content-type', 'application/json')
+          res.end(body)
+          return
+        }
+        if (req.method === 'POST') {
+          const chunks: Buffer[] = []
+          req.on('data', (c: Buffer) => chunks.push(c))
+          req.on('end', () => {
+            try {
+              const incoming = JSON.parse(Buffer.concat(chunks).toString('utf8'))
+              let current: unknown = null
+              try {
+                if (existsSync(file)) current = JSON.parse(readFileSync(file, 'utf8'))
+              } catch {
+                current = null
+              }
+              // Merge-on-write (by recency) so two active dev instances never clobber.
+              writeFileSync(file, JSON.stringify(mergeProgress(current, incoming)))
+            } catch {
+              /* bad body / read-write error → keep the current file untouched */
+            }
+            res.statusCode = 204
+            res.end()
+          })
+          return
+        }
+        res.statusCode = 405
+        res.end()
+      })
+    },
+  }
+}
 
 // Environment-dependent base:
 //  - dev (`npm run dev`)   -> '/'                    (frictionless http://localhost:5173/)
@@ -10,5 +68,5 @@ export default defineConfig(({ command }) => ({
   // Expose the dev server on the LAN (accessible via the machine's IP, e.g. for phone testing).
   // Honor a PORT env var (preview tooling assigns one) but default to vite's 5173.
   server: { host: true, port: Number(process.env.PORT) || 5173 },
-  plugins: [svelte()],
+  plugins: [svelte(), devProgressSync()],
 }))

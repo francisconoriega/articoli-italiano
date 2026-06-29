@@ -15,6 +15,7 @@
 import type {
   ProgressStore,
   ItemProgress,
+  SkillProgress,
 } from '../types';
 
 import {
@@ -142,11 +143,116 @@ export function loadStore(): ProgressStore {
  * Silently swallows quota exceeded errors (the caller is not expected to handle them).
  */
 export function saveStore(store: ProgressStore): void {
-  if (!hasStorage()) return;
+  if (hasStorage()) {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(store));
+    } catch (err) {
+      console.warn('[storage] saveStore: could not write to localStorage.', err);
+    }
+  }
+  // Mirror to the shared dev file so studying is unified across dev ports.
+  // No-op in production builds and in node (see devSyncEnabled / STORAGE.md).
+  pushDevShared(store);
+}
+
+/* ─── Merge (import + cross-port sync) ──────────────────────────────────────── */
+
+/**
+ * Merge two stores by RECENCY so neither side loses progress:
+ *  - per item id, keep the ItemProgress with the more recent `lastSeen`;
+ *  - per skill, keep the one with more exposures (`seen`);
+ *  - history is concatenated and capped to the most recent 50 rounds;
+ *  - settings stay with `base` (device-local prefs like the timer).
+ * Pure — used by both importStoreJson's caller and the dev cross-port sync.
+ */
+export function mergeStores(base: ProgressStore, incoming: ProgressStore): ProgressStore {
+  const items: Record<string, ItemProgress> = { ...incoming.items };
+  for (const [id, bp] of Object.entries(base.items)) {
+    const ip = items[id];
+    if (!ip) { items[id] = bp; continue; }
+    items[id] = (bp.lastSeen ?? -1) >= (ip.lastSeen ?? -1) ? bp : ip;
+  }
+
+  const skills: Record<string, SkillProgress> = { ...incoming.skills };
+  for (const [id, bs] of Object.entries(base.skills)) {
+    const is = skills[id];
+    skills[id] = !is || bs.seen >= is.seen ? bs : is;
+  }
+
+  const history = [...incoming.history, ...base.history]
+    .sort((a, b) => a.endedAt - b.endedAt)
+    .slice(-50);
+
+  return { ...base, items, skills, history, settings: base.settings };
+}
+
+/* ─── Dev-only cross-port sync (see STORAGE.md) ─────────────────────────────────
+ * Two `npm run dev` instances on different ports are different ORIGINS and can't
+ * share localStorage. A dev-only vite middleware (vite.config.ts) persists ONE
+ * shared JSON file on disk; the app GET/POSTs it here so studying is unified across
+ * ports. In a PRODUCTION build this is OFF (devSyncEnabled() === false) — plain
+ * localStorage, one origin. Every path falls back to localStorage so nothing breaks.
+ * ──────────────────────────────────────────────────────────────────────────── */
+
+const DEV_SYNC_URL = '/__progress';
+const DEV_SYNC_TIMEOUT_MS = 600;
+
+/** True ONLY under `vite dev`; false in production builds and in node (tsx harnesses). */
+function devSyncEnabled(): boolean {
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(store));
-  } catch (err) {
-    console.warn('[storage] saveStore: could not write to localStorage.', err);
+    const env = (import.meta as unknown as { env?: { DEV?: boolean } }).env;
+    return env?.DEV === true && typeof fetch !== 'undefined';
+  } catch {
+    return false;
+  }
+}
+
+/** GET the shared dev store, or null on any failure/timeout (→ localStorage fallback). */
+async function fetchDevShared(): Promise<ProgressStore | null> {
+  if (!devSyncEnabled()) return null;
+  try {
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), DEV_SYNC_TIMEOUT_MS);
+    const res = await fetch(DEV_SYNC_URL, { signal: ctrl.signal });
+    clearTimeout(timer);
+    if (!res.ok) return null;
+    const json: unknown = await res.json();
+    if (typeof json !== 'object' || json === null || !('items' in json) || !('skills' in json)) {
+      return null;
+    }
+    return json as ProgressStore;
+  } catch {
+    return null;
+  }
+}
+
+/** Mirror the store to the shared dev file (fire-and-forget; no-op in prod / node). */
+function pushDevShared(store: ProgressStore): void {
+  if (!devSyncEnabled()) return;
+  try {
+    void fetch(DEV_SYNC_URL, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(store),
+    }).catch(() => { /* localStorage stays the source of truth */ });
+  } catch {
+    /* ignore */
+  }
+}
+
+/**
+ * Async load used at boot. Always starts from localStorage; in dev, merges any
+ * shared cross-port store by recency. Falls back to the localStorage store on any
+ * dev-sync failure. In production this resolves to loadStore() immediately.
+ */
+export async function loadStoreAsync(): Promise<ProgressStore> {
+  const local = loadStore();
+  const shared = await fetchDevShared();
+  if (!shared) return local;
+  try {
+    return mergeStores(local, shared);
+  } catch {
+    return local;
   }
 }
 

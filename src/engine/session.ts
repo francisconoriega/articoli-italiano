@@ -19,7 +19,7 @@ import type {
 } from '../types'
 import { checkAnswer } from './validate'
 import { applyAnswer, createItemProgress, rollUpSkill } from './mastery'
-import { saveStore } from './storage'
+import { saveStore, exportStoreJson, importStoreJson, mergeStores } from './storage'
 import { chooseNext, poolForMode, scheduleRecentMiss, pickRecentMiss, type RecentMiss } from './select'
 import { buildChoices, presentationFor } from './choices'
 import { composeRound, topicInfos, type RoundPlan, type TopicState, type TopicInfo } from './scheduler'
@@ -379,6 +379,36 @@ export class PracticeSession {
     for (const key of Object.keys(this.store.items)) delete this.store.items[key]
     for (const key of Object.keys(this.store.skills)) delete this.store.skills[key]
     this.store.history = []
+    this.answered = 0
+    this.correct = 0
+    this.near = 0
+    this.streak = 0
+    this.recentMisses = []
+    this.lastId = null
+    saveStore(this.store)
+    return this.startRound(now)
+  }
+
+  /** Serialise the whole progress store as pretty JSON for download. */
+  exportJson(): string {
+    return exportStoreJson(this.store)
+  }
+
+  /**
+   * Import a previously-exported store and MERGE it into the current one by recency
+   * (neither side loses progress). Throws on an invalid file (caller shows the error).
+   * Resets the live round and draws a fresh item.
+   */
+  importJson(json: string, now: number): Item | null {
+    const incoming = importStoreJson(json)
+    const merged = mergeStores(this.store, incoming)
+    // Apply in place so existing references (App reads session.store) stay valid.
+    for (const key of Object.keys(this.store.items)) delete this.store.items[key]
+    Object.assign(this.store.items, merged.items)
+    for (const key of Object.keys(this.store.skills)) delete this.store.skills[key]
+    Object.assign(this.store.skills, merged.skills)
+    this.store.history = merged.history
+    // The progress changed underneath — reset live session counters.
     this.answered = 0
     this.correct = 0
     this.near = 0

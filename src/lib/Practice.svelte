@@ -45,6 +45,8 @@
     onToggleTimer,
     onToggleAssist,
     onSetExamDate,
+    onExport,
+    onImport,
     onReset,
   }: {
     item: Item | null
@@ -75,6 +77,8 @@
     onToggleTimer: (enabled: boolean) => void
     onToggleAssist: (enabled: boolean) => void
     onSetExamDate: (date: string | null) => void
+    onExport: () => void
+    onImport: (json: string) => void
     onReset: () => void
   } = $props()
 
@@ -83,6 +87,15 @@
     acquisition: 'aprendiendo',
     new: 'tema nuevo',
     review: 'repaso',
+  }
+
+  async function handleImportFile(e: Event) {
+    const input = e.currentTarget as HTMLInputElement
+    const file = input.files?.[0]
+    if (!file) return
+    const text = await file.text()
+    onImport(text)
+    input.value = '' // allow re-importing the same file
   }
 
   const MODES: PracticeMode[] = ['mixed', 'verbs', 'articles', 'numbers', 'vocab']
@@ -222,6 +235,11 @@
     {/if}
     <span class="spacer"></span>
     <span class="hint">{poolSize} elementos</span>
+    <button class="ghost-button" onclick={onExport}>Exportar</button>
+    <label class="ghost-button import-btn">
+      Importar
+      <input type="file" accept="application/json,.json" onchange={handleImportFile} hidden />
+    </label>
     <button class="ghost-button danger" onclick={onReset}>Reiniciar</button>
   </div>
 </section>
@@ -289,6 +307,12 @@
   }
   .spacer {
     flex: 1 1 auto;
+  }
+  /* The Importar <label> wraps a hidden file input but should look/behave like a button. */
+  .import-btn {
+    display: inline-flex;
+    align-items: center;
+    cursor: pointer;
   }
 
   /* Exam-date knob (optional) */
