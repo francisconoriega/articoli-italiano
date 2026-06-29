@@ -431,6 +431,132 @@ const VERB_FRAMES: Record<string, VerbFrameSet> = {
       { it: '{S} ____ la cena stasera.', es: '{S} {V} la cena esta noche.' },
     ],
   },
+
+  // ── Irregulars added with the A1–A2 lesson content ───────────────────────────────
+  dire: {
+    esVerb: { io: 'digo', tu: 'dices', lui: 'dice', noi: 'decimos', voi: 'dicen', loro: 'dicen' },
+    frames: [
+      { it: '{S} ____ sempre la verità.', es: '{S} {V} siempre la verdad.' },
+      { it: '{S} ____ una bugia ogni tanto.', es: '{S} {V} una mentira de vez en cuando.' },
+      { it: '{S} non ____ mai di no.', es: '{S} no {V} nunca que no.' },
+    ],
+  },
+  bere: {
+    esVerb: { io: 'bebo', tu: 'bebes', lui: 'bebe', noi: 'bebemos', voi: 'beben', loro: 'beben' },
+    frames: [
+      { it: '{S} ____ un caffè la mattina.', es: '{S} {V} un café en la mañana.' },
+      { it: '{S} ____ molta acqua durante il giorno.', es: '{S} {V} mucha agua durante el día.' },
+      { it: '{S} ____ una birra con gli amici?', es: '¿{S} {V} una cerveza con los amigos?', persons: ASK },
+    ],
+  },
+  scegliere: {
+    esVerb: { io: 'elijo', tu: 'eliges', lui: 'elige', noi: 'elegimos', voi: 'eligen', loro: 'eligen' },
+    frames: [
+      { it: '{S} ____ un film per stasera.', es: '{S} {V} una película para esta noche.' },
+      { it: '{S} ____ sempre il piatto del giorno.', es: '{S} {V} siempre el platillo del día.' },
+      { it: '{S} ____ un regalo per Anna.', es: '{S} {V} un regalo para Anna.' },
+    ],
+  },
+  tenere: {
+    esVerb: { io: 'tengo', tu: 'tienes', lui: 'tiene', noi: 'tenemos', voi: 'tienen', loro: 'tienen' },
+    frames: [
+      { it: '{S} ____ le chiavi in tasca.', es: '{S} {V} las llaves en el bolsillo.' },
+      { it: '{S} ____ il cane in giardino.', es: '{S} {V} el perro en el jardín.' },
+      { it: '{S} ____ molti libri in camera.', es: '{S} {V} muchos libros en el cuarto.' },
+    ],
+  },
+  rimanere: {
+    esVerb: { io: 'me quedo', tu: 'te quedas', lui: 'se queda', noi: 'nos quedamos', voi: 'se quedan', loro: 'se quedan' },
+    frames: [
+      { it: '{S} ____ a casa il weekend.', es: '{S} {V} en casa el fin de semana.' },
+      { it: '{S} ____ in ufficio fino a tardi.', es: '{S} {V} en la oficina hasta tarde.' },
+      { it: '{S} ____ a letto la domenica mattina.', es: '{S} {V} en la cama el domingo en la mañana.' },
+    ],
+  },
+  salire: {
+    esVerb: { io: 'subo', tu: 'subes', lui: 'sube', noi: 'subimos', voi: 'suben', loro: 'suben' },
+    frames: [
+      { it: '{S} ____ le scale di corsa.', es: '{S} {V} las escaleras corriendo.' },
+      { it: '{S} ____ sull’autobus alla fermata.', es: '{S} {V} al autobús en la parada.' },
+      { it: '{S} ____ in montagna la domenica.', es: '{S} {V} a la montaña el domingo.' },
+    ],
+  },
+  sedere: {
+    esVerb: { io: 'me siento', tu: 'te sientas', lui: 'se sienta', noi: 'nos sentamos', voi: 'se sientan', loro: 'se sientan' },
+    frames: [
+      { it: '{S} ____ in prima fila a lezione.', es: '{S} {V} en la primera fila en clase.' },
+      { it: '{S} ____ al tavolo per cena.', es: '{S} {V} a la mesa para cenar.' },
+      { it: '{S} ____ vicino alla finestra.', es: '{S} {V} cerca de la ventana.' },
+    ],
+  },
+  spegnere: {
+    esVerb: { io: 'apago', tu: 'apagas', lui: 'apaga', noi: 'apagamos', voi: 'apagan', loro: 'apagan' },
+    frames: [
+      { it: '{S} ____ la luce prima di dormire.', es: '{S} {V} la luz antes de dormir.' },
+      { it: '{S} ____ la TV a mezzanotte.', es: '{S} {V} la tele a medianoche.' },
+      { it: '{S} ____ il telefono durante la lezione.', es: '{S} {V} el teléfono durante la clase.' },
+    ],
+  },
+  tradurre: {
+    esVerb: { io: 'traduzco', tu: 'traduces', lui: 'traduce', noi: 'traducimos', voi: 'traducen', loro: 'traducen' },
+    frames: [
+      { it: '{S} ____ un testo dall’italiano.', es: '{S} {V} un texto del italiano.' },
+      { it: '{S} ____ le frasi in spagnolo.', es: '{S} {V} las frases al español.' },
+      { it: '{S} ____ una poesia difficile.', es: '{S} {V} un poema difícil.' },
+    ],
+  },
+  trarre: {
+    esVerb: { io: 'saco', tu: 'sacas', lui: 'saca', noi: 'sacamos', voi: 'sacan', loro: 'sacan' },
+    frames: [
+      { it: '{S} ____ vantaggio dalla situazione.', es: '{S} {V} provecho de la situación.' },
+      { it: '{S} ____ le conclusioni dai dati.', es: '{S} {V} las conclusiones de los datos.' },
+      { it: '{S} ____ ispirazione dalla natura.', es: '{S} {V} inspiración de la naturaleza.' },
+    ],
+  },
+  porre: {
+    esVerb: { io: 'pongo', tu: 'pones', lui: 'pone', noi: 'ponemos', voi: 'ponen', loro: 'ponen' },
+    frames: [
+      { it: '{S} ____ fine alla discussione.', es: '{S} {V} fin a la discusión.' },
+      { it: '{S} ____ molta attenzione ai dettagli.', es: '{S} {V} mucha atención a los detalles.' },
+      { it: '{S} ____ il libro sullo scaffale.', es: '{S} {V} el libro en el estante.' },
+    ],
+  },
+  morire: {
+    esVerb: { io: 'me muero', tu: 'te mueres', lui: 'se muere', noi: 'nos morimos', voi: 'se mueren', loro: 'se mueren' },
+    frames: [
+      { it: '{S} ____ di sonno a mezzanotte.', es: '{S} {V} de sueño a medianoche.' },
+      { it: '{S} ____ di fame prima di cena.', es: '{S} {V} de hambre antes de cenar.' },
+      { it: '{S} ____ di freddo in inverno.', es: '{S} {V} de frío en invierno.' },
+    ],
+  },
+  // piacere → modelled as ES-MX "caer bien" (person-as-subject "gustar" reads stilted);
+  // the "bien" is baked into the template, `esVerb` carries the caer-forms.
+  piacere: {
+    esVerb: { io: 'caigo', tu: 'caes', lui: 'cae', noi: 'caemos', voi: 'caen', loro: 'caen' },
+    frames: [
+      { it: '{S} ____ a tutti in classe.', es: '{S} {V} bien a todos en clase.' },
+      { it: '{S} ____ molto ai bambini.', es: '{S} {V} muy bien a los niños.' },
+      { it: '{S} ____ a Maria e a Luca.', es: '{S} {V} bien a María y a Luca.' },
+    ],
+  },
+
+  // ── Spelling-special -are verbs added with the lessons ───────────────────────────
+  spiegare: {
+    esVerb: { io: 'explico', tu: 'explicas', lui: 'explica', noi: 'explicamos', voi: 'explican', loro: 'explican' },
+    frames: [
+      { it: '{S} ____ la lezione agli studenti.', es: '{S} {V} la lección a los estudiantes.' },
+      { it: '{S} ____ la grammatica con esempi.', es: '{S} {V} la gramática con ejemplos.' },
+      { it: '{S} ____ il problema al professore.', es: '{S} {V} el problema al profesor.' },
+    ],
+  },
+  cominciare: {
+    esVerb: { io: 'empiezo', tu: 'empiezas', lui: 'empieza', noi: 'empezamos', voi: 'empiezan', loro: 'empiezan' },
+    frames: [
+      { it: '{S} ____ a lavorare alle nove.', es: '{S} {V} a trabajar a las nueve.' },
+      { it: '{S} ____ un nuovo corso d’italiano.', es: '{S} {V} un nuevo curso de italiano.' },
+      { it: '{S} ____ la giornata con un caffè.', es: '{S} {V} el día con un café.' },
+    ],
+  },
 }
 
 /** Parse a generated present-tense verb item id → its infinitive + person, or null. */
