@@ -304,19 +304,29 @@
   }
 
   // Keyboard for CHOICE mode only (type mode is handled by the input itself,
-  // so there is no double-submit).
+  // so there is no double-submit). Both Enter and Space advance from feedback —
+  // Space is easy to reach with the right hand while the left works the 1–4 keys.
   function onKeydown(e: KeyboardEvent) {
     if (e.metaKey || e.ctrlKey || e.altKey) return
-    if (currentMode !== 'choice') return
-    if (phase === 'answering') {
-      const n = Number(e.key)
-      if (Number.isInteger(n) && n >= 1 && n <= choices.length) {
+    if (summary) return // the Summary overlay handles its own keys
+    if (currentMode !== 'choice') return // type mode is handled by the input
+    const isSpace = e.key === ' ' || e.code === 'Space'
+    if (phase === 'feedback') {
+      if (e.key === 'Enter' || isSpace) {
         e.preventDefault()
-        onChoose(choices[n - 1])
+        if (!endingRound) advance()
       }
-    } else if (phase === 'feedback' && e.key === 'Enter') {
+      return
+    }
+    // answering: digits pick an option; swallow Space so it can't scroll the page.
+    if (isSpace) {
       e.preventDefault()
-      if (!summary && !endingRound) advance()
+      return
+    }
+    const n = Number(e.key)
+    if (Number.isInteger(n) && n >= 1 && n <= choices.length) {
+      e.preventDefault()
+      onChoose(choices[n - 1])
     }
   }
 

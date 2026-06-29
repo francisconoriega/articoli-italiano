@@ -42,6 +42,10 @@
     if (e.key === 'Enter') {
       e.preventDefault()
       onsubmit?.()
+    } else if ((e.key === ' ' || e.code === 'Space') && disabled) {
+      // In feedback the input is read-only, so Space advances too (it isn't typed).
+      e.preventDefault()
+      onsubmit?.()
     }
   }
 </script>

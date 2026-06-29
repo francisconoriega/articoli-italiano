@@ -7,5 +7,7 @@ import { svelte } from '@sveltejs/vite-plugin-svelte'
 // https://vite.dev/config/
 export default defineConfig(({ command }) => ({
   base: command === 'build' ? '/articoli-italiano/' : '/',
+  // Expose the dev server on the LAN (accessible via the machine's IP, e.g. for phone testing).
+  server: { host: true },
   plugins: [svelte()],
 }))
