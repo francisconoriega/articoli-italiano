@@ -51,8 +51,14 @@
         aria-current={isAsked ? 'true' : undefined}
       >
         <span class="pronoun">{LABELS[person]}</span>
-        <span class="form" class:form-highlight={isAsked && highlight}>
-          {#if stress}{stress.pre}<span class="stress">{stress.vowel}</span>{stress.post}{:else}{table[
+        <span
+          class="form"
+          class:form-highlight={isAsked && highlight}
+          class:form-masked={isAsked && !highlight}
+        >
+          {#if isAsked && !highlight}
+            <span class="form-mask" aria-label="respuesta oculta">·····</span>
+          {:else if stress}{stress.pre}<span class="stress">{stress.vowel}</span>{stress.post}{:else}{table[
               person
             ]}{/if}
         </span>
@@ -156,6 +162,14 @@
   .form.form-highlight {
     font-weight: 900;
     color: var(--accent-strong);
+  }
+
+  /* The asked row's form is hidden until the learner answers, so the table teaches
+     the PATTERN (the other persons) without handing over the exact answer. */
+  .form-mask {
+    color: var(--muted);
+    letter-spacing: 0.22em;
+    opacity: 0.55;
   }
 
   /* `.stress` (sílaba tónica underline) is defined globally in styles/app.css so
