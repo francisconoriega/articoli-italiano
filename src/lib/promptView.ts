@@ -17,7 +17,9 @@ export interface PromptView {
   /** `tonic` = underline the stressed syllable of 3+ syllable Italian words in
    *  the hero (single-word prompts: verb lemmas and article nouns). */
   hero: { text: string; hasBlank: boolean; isFigure: boolean; tonic: boolean }
-  task: { text: string; hasBlank: boolean } | null
+  /** `tonic` = underline the stressed syllable of 3+ syllable Italian words in
+   *  the task line (the conjugation frame is always an Italian sentence). */
+  task: { text: string; hasBlank: boolean; tonic: boolean } | null
   /** Spanish meaning under the hero (shown in stage 1). */
   meaning: string | null
   /** Full Spanish translation of the whole sentence, shown under `meaning` when the
@@ -52,7 +54,9 @@ export function promptView(item: Item): PromptView {
       badges,
       // The lemma is a single Italian word → underline its tonic syllable.
       hero: { text: item.prompt.lemma.toUpperCase(), hasBlank: false, isFigure: false, tonic: true },
-      task: { text: taskText, hasBlank: taskHasBlank },
+      // The frame is an Italian sentence ("Marco ___ la spesa il sabato") →
+      // underline tonic syllables (sàbato) like we do single Italian words.
+      task: { text: taskText, hasBlank: taskHasBlank, tonic: true },
       meaning: item.gloss ?? null,
       translation: item.translation ?? null,
       answerSlot: taskHasBlank ? 'task' : 'below',
@@ -62,13 +66,14 @@ export function promptView(item: Item): PromptView {
   // Article / sentence / vocab / pronoun — the (possibly blanked) text is the hero.
   const text = item.prompt.text
   const hasBlank = text.includes(BLANK)
-  // Tonic underline only when the article hero is a SINGLE Italian word
-  // ("___ alberi") — never a full article sentence ("___ fratelli di Giorgio…"),
-  // and never the Spanish vocab/pronoun cues.
-  const oneWord = text.replace(BLANK, ' ').trim().split(/\s+/).length === 1
+  // Underline tonic syllables when the hero is ITALIAN — single words ("___ alberi"),
+  // article phrases ("___ fratelli di Giorgio…"), and full sentences alike
+  // (lineSegments splits per word and only marks 3+ syllable words, so "sàbato" gets
+  // underlined while "il"/"la" don't). Excludes vocab/pronoun, whose cues are Spanish.
+  const italianHero = item.kind !== 'vocab' && item.kind !== 'pronoun'
   return {
     badges,
-    hero: { text, hasBlank, isFigure: false, tonic: item.kind === 'article' && oneWord },
+    hero: { text, hasBlank, isFigure: false, tonic: italianHero },
     task: null,
     meaning: item.gloss ?? null,
     translation: item.translation ?? null,
