@@ -670,14 +670,28 @@ kbd {
   }
 }
 
+@media (min-width: 681px) {
+  /* Constrain the desktop prompt card so it isn't a vast empty expanse (mobile stays
+     full-width). The mobile card uses the full panel width. */
+  .word-stage {
+    max-width: 640px;
+  }
+}
+
 @media (max-width: 680px) {
   .app-shell {
     width: min(100% - 16px, 1180px);
     padding: 8px 0;
+    /* Reserve room for the fixed MobileTabBar (56px) so it never covers content. */
+    padding-bottom: 72px;
   }
 
-  .practice-panel,
+  /* The right rail collapses on mobile; its tree lives under the Progreso tab instead. */
   .insights-panel {
+    display: none;
+  }
+
+  .practice-panel {
     padding: 16px;
   }
 

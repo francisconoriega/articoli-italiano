@@ -14,9 +14,8 @@
   } = $props()
 
   const stateClass = $derived(() => {
-    if (!result) return 'feedback neutral'
-    if (result.status === 'correct') return 'feedback correct'
-    if (result.status === 'near') return 'feedback near'
+    if (result?.status === 'correct') return 'feedback correct'
+    if (result?.status === 'near') return 'feedback near'
     return 'feedback wrong'
   })
 
@@ -49,48 +48,48 @@
   const explanationSegments = $derived(() => (explanation ? parseBold(explanation) : []))
 </script>
 
-<div class={stateClass()} class:on-banner={!!result && result.status !== 'correct'}>
-  {#if !result}
-    <span>Elige o escribe tu respuesta para continuar.</span>
-  {:else if result.status === 'correct'}
-    <span>¡Correcto!</span>
-    <div class="feedback-answer">{item.answer}</div>
-  {:else if result.status === 'near'}
-    <span>Casi correcto · falta el acento</span>
-    <div class="answer-xl" style="font-size: {fluidTextSize(result.expected)}">{result.expected}</div>
-    {#if filled()}
-      <div class="filled"><span>{filled()?.before}</span><strong>{result.expected}</strong><span>{filled()?.after}</span></div>
+{#if result}
+  <div class={stateClass()} class:on-banner={result.status !== 'correct'}>
+    {#if result.status === 'correct'}
+      <span>¡Correcto!</span>
+      <div class="feedback-answer">{item.answer}</div>
+    {:else if result.status === 'near'}
+      <span>Casi correcto · falta el acento</span>
+      <div class="answer-xl" style="font-size: {fluidTextSize(result.expected)}">{result.expected}</div>
+      {#if filled()}
+        <div class="filled"><span>{filled()?.before}</span><strong>{result.expected}</strong><span>{filled()?.after}</span></div>
+      {/if}
+    {:else}
+      <span class="lead">La respuesta correcta es:</span>
+      <div class="answer-xl" style="font-size: {fluidTextSize(item.answer)}">{item.answer}</div>
+      {#if filled()}
+        <div class="filled"><span>{filled()?.before}</span><strong>{item.answer}</strong><span>{filled()?.after}</span></div>
+      {/if}
+      {#if result.message}
+        <div class="hint">{result.message}</div>
+      {/if}
     {/if}
-  {:else}
-    <span class="lead">La respuesta correcta es:</span>
-    <div class="answer-xl" style="font-size: {fluidTextSize(item.answer)}">{item.answer}</div>
-    {#if filled()}
-      <div class="filled"><span>{filled()?.before}</span><strong>{item.answer}</strong><span>{filled()?.after}</span></div>
+
+    {#if item.gloss}
+      <!-- When a full-sentence translation accompanies it, the gloss is an idiom/
+           expression cue ("avere fame = tener hambre") → label it "expresión:".
+           On its own, the gloss IS the full meaning → "significado:". -->
+      <div class="meaning-line">{item.translation ? 'expresión' : 'significado'}: <strong>{item.gloss}</strong></div>
     {/if}
-    {#if result.message}
-      <div class="hint">{result.message}</div>
+
+    {#if item.translation}
+      <div class="meaning-line">traducción: <strong>{item.translation}</strong></div>
     {/if}
-  {/if}
 
-  {#if result && item.gloss}
-    <!-- When a full-sentence translation accompanies it, the gloss is an idiom/
-         expression cue ("avere fame = tener hambre") → label it "expresión:".
-         On its own, the gloss IS the full meaning → "significado:". -->
-    <div class="meaning-line">{item.translation ? 'expresión' : 'significado'}: <strong>{item.gloss}</strong></div>
-  {/if}
-
-  {#if result && item.translation}
-    <div class="meaning-line">traducción: <strong>{item.translation}</strong></div>
-  {/if}
-
-  {#if explanation}
-    <div class="feedback-rule">
-      {#each explanationSegments() as seg}
-        {#if seg.bold}<strong>{seg.text}</strong>{:else}{seg.text}{/if}
-      {/each}
-    </div>
-  {/if}
-</div>
+    {#if explanation}
+      <div class="feedback-rule">
+        {#each explanationSegments() as seg}
+          {#if seg.bold}<strong>{seg.text}</strong>{:else}{seg.text}{/if}
+        {/each}
+      </div>
+    {/if}
+  </div>
+{/if}
 
 <style>
   .lead {

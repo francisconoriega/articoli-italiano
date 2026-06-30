@@ -20,7 +20,7 @@
 
 <div class="summary-overlay is-visible" role="dialog" aria-modal="true" aria-label="Resumen de la ronda">
   <div class="summary-dialog">
-    <div style="display:flex; align-items:center; gap:16px;">
+    <div class="summary-head">
       <div class="session-score" aria-hidden="true">
         <span>{accuracy}%</span>
       </div>
@@ -28,7 +28,7 @@
         <p class="eyebrow">Ronda terminada</p>
         <h2>{record.correct}/{record.answered} correctas</h2>
         {#if record.near > 0}
-          <p class="muted">{record.near} «casi» (acento)</p>
+          <p class="muted near-note">{record.near} «casi» (acento)</p>
         {/if}
       </div>
     </div>
@@ -39,8 +39,8 @@
       <div><strong>{record.answered - record.correct}</strong><small>errores</small></div>
     </div>
 
-    <div>
-      <h3 style="margin:0 0 8px; font-size:0.95rem;">A reforzar</h3>
+    <div class="reinforce-block">
+      <h3>A reforzar</h3>
       {#if mistakes.length === 0}
         <p class="muted">Sin errores en esta ronda. ¡Bien hecho!</p>
       {:else}
@@ -55,7 +55,7 @@
       {/if}
     </div>
 
-    <div class="summary-actions" style="display:flex; gap:12px; align-items:center; justify-content:flex-end;">
+    <div class="summary-actions">
       <span class="hint">Enter o Espacio para seguir</span>
       <button class="ghost-button primary" onclick={onNewRound}>Otra ronda →</button>
     </div>
@@ -63,6 +63,11 @@
 </div>
 
 <style>
+  .summary-head {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
   .session-score {
     width: 84px;
     aspect-ratio: 1;
@@ -76,14 +81,36 @@
     font-size: 1.2rem;
     font-weight: 800;
   }
+  .near-note {
+    margin-top: 4px;
+  }
+  .summary-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+  }
   .summary-grid div {
     text-align: center;
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: 12px 8px;
   }
   .summary-grid strong {
     display: block;
     font-size: 1.5rem;
+    font-weight: 800;
   }
   .summary-grid small {
     color: var(--muted);
+  }
+  .reinforce-block h3 {
+    margin: 0 0 8px;
+    font-size: 0.95rem;
+  }
+  .summary-actions {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    justify-content: flex-end;
   }
 </style>
