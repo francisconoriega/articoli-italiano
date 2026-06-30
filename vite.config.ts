@@ -73,6 +73,12 @@ export default defineConfig(({ command }) => ({
   base: command === 'build' ? '/articoli-italiano/' : '/',
   // Expose the dev server on the LAN (accessible via the machine's IP, e.g. for phone testing).
   // Honor a PORT env var (preview tooling assigns one) but default to vite's 5173.
-  server: { host: true, port: Number(process.env.PORT) || 5173 },
+  // `allowedHosts` lets the LAN reach it by HOSTNAME too (e.g. http://mac.home:5199 from a
+  // phone) — Vite always permits localhost + IP literals, but named hosts must be listed.
+  server: {
+    host: true,
+    port: Number(process.env.PORT) || 5173,
+    allowedHosts: ['mac.home'],
+  },
   plugins: [svelte(), ...(TEST_INSTANCE ? [] : [devProgressSync()])],
 }))

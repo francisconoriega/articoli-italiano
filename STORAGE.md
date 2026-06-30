@@ -88,6 +88,24 @@ bookmark — never changes.
   The cross-port sync still unifies them via the shared file, but for one stable study origin, run
   the **study** server on 5173 and let extra/throwaway instances take the bumped ports.
 
+### Reach it by hostname: `mac.home`
+
+The dev server is exposed on the LAN (`server.host: true`). Prefer the Mac's **hostname** over the
+LAN IP — it's stable even when the IP changes, and it's the canonical way to open the app from a
+phone/other device:
+
+- **Study:** `http://mac.home:5173`  ·  **a `dev:test` instance:** `http://mac.home:5199`
+
+Vite **blocks unknown hostnames** by default (`localhost` and IP literals are always allowed), so
+`vite.config.ts` lists it explicitly:
+
+```ts
+server: { host: true, port: Number(process.env.PORT) || 5173, allowedHosts: ['mac.home'] }
+```
+
+Add more names to `allowedHosts` (or use a leading-dot wildcard like `'.home'`) if you open the app
+from a host with a different name.
+
 ## Automated-testing mode
 
 > **How to use it:** [TESTING.md](TESTING.md) is the practical guide (which mode to pick & why).
