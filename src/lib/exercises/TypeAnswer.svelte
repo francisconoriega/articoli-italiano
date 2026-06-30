@@ -88,7 +88,7 @@
 
   <!-- TASK (verb conjugation frame) -->
   {#if pv.task}
-    <div class="prompt-task">{@render line(pv.task.text, false)}</div>
+    <div class="prompt-task">{@render line(pv.task.text, pv.task.tonic && showTonic)}</div>
   {/if}
 
   <!-- ANSWER below (numbers / vocab) -->

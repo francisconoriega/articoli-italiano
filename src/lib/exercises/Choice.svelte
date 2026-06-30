@@ -85,7 +85,7 @@
   {/if}
 
   {#if pv.task}
-    <div class="prompt-task">{@render line(pv.task.text, false)}</div>
+    <div class="prompt-task">{@render line(pv.task.text, pv.task.tonic && showTonic)}</div>
   {/if}
 
   {#if item.prompt.hint}<div class="hint">{item.prompt.hint}</div>{/if}
