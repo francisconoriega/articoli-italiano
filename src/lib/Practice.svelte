@@ -111,7 +111,7 @@
     input.value = '' // allow re-importing the same file
   }
 
-  const MODES: PracticeMode[] = ['mixed', 'verbs', 'articles', 'numbers', 'vocab', 'agreement', 'time', 'functional']
+  const MODES: PracticeMode[] = ['mixed', 'verbs', 'articles', 'numbers', 'vocab', 'body', 'agreement', 'time', 'functional']
 </script>
 
 <section class="practice-panel">

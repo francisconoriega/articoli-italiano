@@ -32,7 +32,11 @@ export function poolForMode(items: Item[], mode: PracticeMode): Item[] {
     case 'numbers':
       return items.filter((i) => i.kind === 'number')
     case 'vocab':
-      return items.filter((i) => i.kind === 'vocab' || i.kind === 'pronoun')
+      return items.filter(
+        (i) => (i.kind === 'vocab' && i.topic !== 'vocab:body') || i.kind === 'pronoun',
+      )
+    case 'body':
+      return items.filter((i) => i.kind === 'vocab' && i.topic === 'vocab:body')
     case 'time':
       return items.filter((i) => i.kind === 'tell-time')
     case 'functional':
