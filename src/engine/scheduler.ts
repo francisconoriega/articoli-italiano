@@ -278,7 +278,7 @@ export interface CategoryInfo {
 }
 
 /** Display order used to break sort ties between categories. */
-const CATEGORY_ORDER = ['verbos', 'numeros', 'hora', 'articulos', 'vocab', 'expresiones', 'pronombres', 'examen', 'otros']
+const CATEGORY_ORDER = ['verbos', 'numeros', 'hora', 'articulos', 'vocab', 'cuerpo', 'expresiones', 'pronombres', 'examen', 'otros']
 
 const CATEGORY_STATE_RANK: Record<CategoryState, number> = { active: 0, new: 1, mastered: 2 }
 
@@ -288,6 +288,7 @@ export function categoryKeyOf(topic: string): string {
   if (topic.startsWith('num:')) return 'numeros'
   if (topic === 'time') return 'hora'
   if (topic.startsWith('article:')) return 'articulos'
+  if (topic === 'vocab:body') return 'cuerpo'
   if (topic.startsWith('vocab:')) return 'vocab'
   if (topic === 'functional') return 'expresiones'
   if (topic === 'pronoun') return 'pronombres'

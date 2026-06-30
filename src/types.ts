@@ -271,6 +271,7 @@ export type PracticeMode =
   | 'articles'
   | 'numbers'
   | 'vocab'
+  | 'body'
   | 'agreement'
   | 'time'
   | 'functional'
