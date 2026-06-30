@@ -115,14 +115,14 @@
   }
   .metric b {
     display: block;
-    font-size: 1.4rem;
-    font-weight: 900;
+    font-size: 1.2rem;
+    font-weight: 800;
     line-height: 1.1;
   }
   .metric small {
     color: var(--muted);
-    font-size: 0.82rem; /* ≥13px: AA-safe for muted copy */
-    font-weight: 700;
+    font-size: 0.8rem; /* ≥13px: AA-safe for muted copy */
+    font-weight: 600;
   }
   .metric.exam b {
     color: var(--accent-strong);
