@@ -11,6 +11,7 @@
   } from './types'
   import { BLANK } from './types'
   import { PracticeSession, type SessionStats, type SubmitResult } from './engine/session'
+  import type { ChoiceOption } from './engine/choices'
   import { daysUntil, categoryProgress, type TopicState, type TopicInfo, type CategoryInfo } from './engine/scheduler'
   import { cardinalLesson } from './engine/numbers'
   import { explanationRules, catalog } from './content'
@@ -46,6 +47,7 @@
   let mode = $state<PracticeMode>(session.mode)
   let currentMode = $state<PresentationMode>('type')
   let choices = $state<string[]>([])
+  let choiceOptions = $state<ChoiceOption[]>([])
   let selected = $state<string | null>(null)
   let explanation = $state('')
   let stageClass = $state('')
@@ -205,6 +207,7 @@
     mode = session.mode
     currentMode = session.currentMode
     choices = session.currentChoices
+    choiceOptions = session.currentChoiceOptions
     showGloss = session.currentShowGloss
     showTonic = session.settings.tonicStress
     poolSize = session.poolSize
@@ -257,7 +260,12 @@
     }
     const text = item.prompt.text
     const idx = text.indexOf(BLANK)
-    if (idx !== -1) return { before: text.slice(0, idx), after: text.slice(idx + BLANK.length) }
+    if (idx !== -1) {
+      // Multi-blank (agreement): the answer is the whole corrected phrase, so don't
+      // wrap it in before/after context — show the corrected phrase alone.
+      if (text.indexOf(BLANK, idx + BLANK.length) !== -1) return { before: '', after: '' }
+      return { before: text.slice(0, idx), after: text.slice(idx + BLANK.length) }
+    }
     if (text) return { before: `${text} → `, after: '' }
     return { before: '', after: '' }
   }
@@ -284,11 +292,8 @@
       meaning: r.item.gloss ?? null,
       status: r.answerResult === 'near' ? 'near' : 'wrong',
     }
-    // The answer stays visible ~3s, then the banner removes itself.
-    bannerTimer = window.setTimeout(() => {
-      banner = null
-      bannerTimer = 0
-    }, 3000)
+    // Sticky: it stays until the learner advances to the next item (advance() clears
+    // it) or dismisses it manually — no auto-timeout.
   }
 
   // ── Mini-lesson completion beat (the motivation half of the blend) ─────────
@@ -496,13 +501,26 @@
   // so there is no double-submit). Both Enter and Space advance from feedback —
   // Space is easy to reach with the right hand while the left works the 1–4 keys.
   function onKeydown(e: KeyboardEvent) {
-    if (e.metaKey || e.ctrlKey || e.altKey) return
+    if (e.metaKey || e.ctrlKey) return
     const isSpace = e.key === ' ' || e.code === 'Space'
     // Round summary: Enter or Space starts the next round (no mouse needed).
     if (summary) {
-      if (e.key === 'Enter' || isSpace) {
+      if (!e.altKey && (e.key === 'Enter' || isSpace)) {
         e.preventDefault()
         startNewRound()
+      }
+      return
+    }
+    // Alt+n / Alt+s = No sé / Saltar from TYPE mode (Alt so they don't collide with typing).
+    if (e.altKey) {
+      if (current && phase !== 'feedback') {
+        if (e.key === 'n' || e.key === 'N') {
+          e.preventDefault()
+          onDontKnow()
+        } else if (e.key === 's' || e.key === 'S') {
+          e.preventDefault()
+          onSkip()
+        }
       }
       return
     }
@@ -514,7 +532,19 @@
       }
       return
     }
-    // answering: digits pick an option; swallow Space so it can't scroll the page.
+    // answering (choice mode): n = No sé, s = Saltar (bare, since options are picked by
+    // digits and are multi-letter Italian words); digits pick an option.
+    if (current && (e.key === 'n' || e.key === 'N')) {
+      e.preventDefault()
+      onDontKnow()
+      return
+    }
+    if (current && (e.key === 's' || e.key === 'S')) {
+      e.preventDefault()
+      onSkip()
+      return
+    }
+    // swallow Space so it can't scroll the page.
     if (isSpace) {
       e.preventDefault()
       return
@@ -552,6 +582,7 @@
     {mode}
     {currentMode}
     {choices}
+    {choiceOptions}
     {selected}
     {explanation}
     {stageClass}
@@ -559,6 +590,7 @@
     {showGloss}
     {showTonic}
     {banner}
+    onDismissBanner={clearBanner}
     {poolSize}
     miniLesson={{
       active: isMiniLesson,

@@ -1,6 +1,7 @@
 <script lang="ts">
   import type { Item, ValidationResult } from '../types'
   import { BLANK } from '../types'
+  import { fluidTextSize } from './promptView'
 
   let {
     result = null,
@@ -20,10 +21,15 @@
   })
 
   // The prompt sentence split around the blank, so we can show it filled-in.
+  // Only meaningful with EXACTLY one blank: for multi-blank items (agreement) the
+  // answer is the whole corrected phrase, so an in-context fill would dump the entire
+  // sentence into a single slot. Skip it then — the answer-xl already shows the full
+  // corrected phrase.
   const filled = $derived(() => {
     const text = item.prompt.text
     const idx = text.indexOf(BLANK)
     if (idx === -1) return null
+    if (text.indexOf(BLANK, idx + BLANK.length) !== -1) return null
     return { before: text.slice(0, idx), after: text.slice(idx + BLANK.length) }
   })
 
@@ -43,7 +49,7 @@
   const explanationSegments = $derived(() => (explanation ? parseBold(explanation) : []))
 </script>
 
-<div class={stateClass()}>
+<div class={stateClass()} class:on-banner={!!result && result.status !== 'correct'}>
   {#if !result}
     <span>Elige o escribe tu respuesta para continuar.</span>
   {:else if result.status === 'correct'}
@@ -51,13 +57,13 @@
     <div class="feedback-answer">{item.answer}</div>
   {:else if result.status === 'near'}
     <span>Casi correcto · falta el acento</span>
-    <div class="answer-xl">{result.expected}</div>
+    <div class="answer-xl" style="font-size: {fluidTextSize(result.expected)}">{result.expected}</div>
     {#if filled()}
       <div class="filled"><span>{filled()?.before}</span><strong>{result.expected}</strong><span>{filled()?.after}</span></div>
     {/if}
   {:else}
     <span class="lead">La respuesta correcta es:</span>
-    <div class="answer-xl">{item.answer}</div>
+    <div class="answer-xl" style="font-size: {fluidTextSize(item.answer)}">{item.answer}</div>
     {#if filled()}
       <div class="filled"><span>{filled()?.before}</span><strong>{item.answer}</strong><span>{filled()?.after}</span></div>
     {/if}
@@ -124,5 +130,13 @@
   .meaning-line strong {
     color: var(--ink);
     font-style: italic;
+  }
+  /* On narrow screens a wrong/near answer is shown by the floating CorrectionBanner
+     instead, so hide this inline box then (no duplicate). Correct answers have no
+     banner, so they keep showing here. */
+  @media (max-width: 680px) {
+    :global(.feedback.on-banner) {
+      display: none;
+    }
   }
 </style>

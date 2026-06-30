@@ -26,6 +26,7 @@ export function modeLabel(mode: PracticeMode): string {
     articles: 'Artículos',
     numbers: 'Números',
     vocab: 'Vocabulario',
+    agreement: 'Concordancia',
     time: 'La hora',
     functional: 'Expresiones',
     'exam-drill': 'Examen',
@@ -67,6 +68,14 @@ export function topicLabel(topic: string): string {
     const title = explanationRules[rule]?.title
     return title ? `artículos: ${title}` : `artículos: ${rule.replace(/_/g, ' ')}`
   }
+  const agreeMap: Record<string, string> = {
+    'agreement:fem-sing': 'concordancia: femenino singular',
+    'agreement:fem-plural': 'concordancia: femenino plural',
+    'agreement:masc-sing': 'concordancia: masculino singular',
+    'agreement:masc-plural': 'concordancia: masculino plural',
+    'agreement:mixed': 'concordancia',
+  }
+  if (agreeMap[topic]) return agreeMap[topic]
   return topic
 }
 
@@ -145,6 +154,18 @@ export function skillLabel(skill: string): string {
   }
   if (skill.startsWith('time:')) return 'la hora'
   if (skill.startsWith('functional:')) return 'expresiones útiles'
+  if (skill.startsWith('agreement:')) {
+    const c = skill.slice('agreement:'.length)
+    const map: Record<string, string> = {
+      'fem-sing': 'concordancia femenino singular',
+      'fem-plural': 'concordancia femenino plural',
+      'masc-sing': 'concordancia masculino singular',
+      'masc-plural': 'concordancia masculino plural',
+      'adj-oa': 'adjetivos -o/-a',
+      'adj-e': 'adjetivos -e',
+    }
+    return map[c] ?? `concordancia (${c})`
+  }
   if (skill.startsWith('idiom:')) return `modismo ${skill.slice(6).replace(/-/g, ' ')}`
   if (skill === 'essere') return 'verbo essere'
   if (skill === 'avere') return 'verbo avere'

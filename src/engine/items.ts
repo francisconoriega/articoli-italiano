@@ -6,6 +6,7 @@
  * never see the source entries. Adding curriculum never touches this file's callers.
  */
 import type {
+  AgreementEntry,
   Catalog,
   Item,
   NounEntry,
@@ -147,6 +148,9 @@ function nounToItems(noun: NounEntry): Item[] {
   // than one 81-item bag; nouns with a rule keep their rule topic (already coherent).
   const topic = noun.rule ? `article:${noun.rule}` : `article:regular:${noun.gender}`
 
+  // Gender chip — "Masculino" / "Femenino" from the noun entry's gender field.
+  const genderBadge = noun.gender === 'm' ? 'Masculino' : 'Femenino'
+
   // Definite — singular & plural
   const definites: Array<{ suffix: 'sing' | 'plur'; surface: string; article: string }> = [
     { suffix: 'sing', surface: noun.singular, article: noun.definite.singular },
@@ -160,7 +164,7 @@ function nounToItems(noun: NounEntry): Item[] {
       prompt: {
         text: `${BLANK} ${d.surface}`,
         hint: 'artículo determinado (el/la/los/las)',
-        badges: ['Determinado', d.suffix === 'sing' ? 'Singular' : 'Plural'],
+        badges: ['Determinado', d.suffix === 'sing' ? 'Singular' : 'Plural', genderBadge],
         placeholder: d.suffix === 'sing' ? "il · lo · la · l'" : 'i · gli · le',
       },
       answer: d.article,
@@ -182,7 +186,7 @@ function nounToItems(noun: NounEntry): Item[] {
       prompt: {
         text: `${BLANK} ${noun.singular}`,
         hint: 'artículo indeterminado (un/una)',
-        badges: ['Indeterminado', 'Singular'],
+        badges: ['Indeterminado', 'Singular', genderBadge],
         placeholder: "un · uno · una · un'",
       },
       answer: noun.indefinite.singular,
@@ -390,13 +394,91 @@ function sentenceToItems(entry: SentenceEntry): Item[] {
   ]
 }
 
+/**
+ * Reconstruct the FULL corrected phrase from an agreement entry: interleave the phrase
+ * segments (split on `_`) with the answer endings. `parts` has one more element than
+ * `answers`, e.g. ["l'amic"," messican"," di Laura."] + ["a","a"] → "l'amica messicana
+ * di Laura.". This corrected phrase is the Item.answer (so choice-mode option matching
+ * and the feedback box both work off a single readable string).
+ */
+function fillAgreement(parts: string[], answers: string[]): string {
+  let out = ''
+  parts.forEach((part, i) => {
+    out += part
+    if (i < answers.length) out += answers[i]
+  })
+  return out
+}
+
+/**
+ * Derive the agreement CELL → scheduler topic + display badges. Prefers the explicit
+ * gender/number on the entry; otherwise infers from the `agreement:<cell>` skill (the
+ * two-clause exam #4 carries both cells, so it falls back to a neutral topic + no
+ * gender/number badge). Returns the topic and the Femenino/Masculino + Singular/Plural
+ * badges (reusing the shared badge convention so badgeTitle tooltips apply).
+ */
+function agreementCell(entry: AgreementEntry): { topic: string; badges: string[] } {
+  let gender = entry.gender
+  let number = entry.number
+  if (!gender || !number) {
+    // Infer from a single unambiguous cell skill (skip when two cells are present).
+    const cellSkills = entry.skills.filter((s) =>
+      s === 'agreement:fem-sing' ||
+      s === 'agreement:fem-plural' ||
+      s === 'agreement:masc-sing' ||
+      s === 'agreement:masc-plural',
+    )
+    if (cellSkills.length === 1) {
+      const cell = cellSkills[0]
+      if (!gender) gender = cell.includes('fem') ? 'f' : 'm'
+      if (!number) number = cell.includes('plural') ? 'plural' : 'singular'
+    }
+  }
+  const badges: string[] = []
+  if (gender) badges.push(gender === 'f' ? 'Femenino' : 'Masculino')
+  if (number) badges.push(number === 'singular' ? 'Singular' : 'Plural')
+  // Mixed-cell entries (no single gender/number) get the generic Ex2 topic.
+  const topic =
+    gender && number
+      ? `agreement:${gender === 'f' ? 'fem' : 'masc'}-${number === 'singular' ? 'sing' : 'plural'}`
+      : 'agreement:mixed'
+  return { topic, badges }
+}
+
+function agreementToItems(entry: AgreementEntry): Item[] {
+  const parts = entry.phrase.split('_')
+  const { topic, badges } = agreementCell(entry)
+  // Render the phrase with the single-blank token `____` at each blank, so the unified
+  // card anatomy (promptView/lineSegments) splits it into blank slots in CHOICE mode.
+  // The TYPE-mode multi-blank renderer reads `prompt.parts`/`prompt.blanks` instead.
+  const promptText = parts.join(BLANK)
+  badges.push('Concordancia')
+  return [
+    {
+      // Entry ids already carry the `agreement:` namespace (e.g. "agreement:exam-1").
+      id: entry.id,
+      kind: 'agreement',
+      topic,
+      prompt: { text: promptText, badges, parts, blanks: entry.answers },
+      // The answer is the fully-corrected phrase (single readable string).
+      answer: fillAgreement(parts, entry.answers),
+      gloss: entry.gloss,
+      skills: entry.skills.length ? entry.skills : ['agreement'],
+      unit: entry.unit,
+      examWeight: entry.examWeight ?? 2,
+      source: entry.source,
+      tags: ['rule:agreement'],
+    },
+  ]
+}
+
 /* ── Public API ─────────────────────────────────────────────────────────────── */
 
 /**
  * Expand the whole catalog into a flat, de-duplicated Item list.
  * Throws on a duplicate id or an empty answer (a content bug we want to catch early).
- * Agreement entries (Ex2 multi-blank) are intentionally NOT expanded in Phase 1A —
- * their renderer lands in Phase 1B.
+ * Agreement entries (Ex2 multi-blank) emit one Item each (kind:'agreement'); their
+ * TYPE-mode renderer reads prompt.parts/prompt.blanks, CHOICE mode uses full phrases.
  */
 export function buildItems(catalog: Catalog): Item[] {
   const items: Item[] = [
@@ -406,6 +488,7 @@ export function buildItems(catalog: Catalog): Item[] {
     ...catalog.vocab.flatMap(vocabToItems),
     ...catalog.pronouns.flatMap(pronounToItems),
     ...catalog.sentences.flatMap(sentenceToItems),
+    ...catalog.agreement.flatMap(agreementToItems),
   ]
 
   const seen = new Set<string>()

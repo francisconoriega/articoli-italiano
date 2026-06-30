@@ -207,12 +207,18 @@ h2 {
   background: var(--panel);
 }
 
+/* Applied by Choice.svelte and TypeAnswer.svelte via badgeClass() to tint the
+   Singular / Plural grammar badges with their respective accent colors. */
 .grammar-plural {
   color: var(--purple);
+  border-color: var(--purple);
+  background: rgba(126, 34, 206, 0.07);
 }
 
 .grammar-singular {
   color: var(--blue);
+  border-color: var(--blue);
+  background: rgba(2, 132, 199, 0.07);
 }
 
 /* Prompt sentence with the inline blank */
@@ -585,9 +591,9 @@ kbd {
 
 /* ── Animations (ported) ──────────────────────────────────────────────────── */
 
-.shake {
-  animation: shakeWrong 280ms ease;
-}
+/* NOTE: .shake was removed — it was defined here but never applied anywhere in
+   the component tree. Wrong-answer animation is handled by .word-stage.stage-flash-wrong
+   (stageFlashWrong keyframes, applied via stageClass in App.svelte). */
 
 .timeout-pulse {
   animation: timeoutPulse 360ms ease;
@@ -605,18 +611,8 @@ kbd {
   animation: stageFlashWrong 600ms ease;
 }
 
-@keyframes shakeWrong {
-  0%, 100% { transform: translateX(0); }
-  25% { transform: translateX(-5px); }
-  50% { transform: translateX(5px); }
-  75% { transform: translateX(-3px); }
-}
-
-@keyframes correctFlash {
-  0% { transform: scale(1); }
-  45% { transform: scale(1.03); }
-  100% { transform: scale(1); }
-}
+/* NOTE: @keyframes correctFlash was removed — defined but never referenced.
+   Correct-answer feedback uses stageFlash (green border/bg flash) instead. */
 
 @keyframes timeoutPulse {
   0%, 100% { background: linear-gradient(90deg, var(--accent), #d1a03d); }

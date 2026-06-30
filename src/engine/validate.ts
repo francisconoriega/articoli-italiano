@@ -116,7 +116,22 @@ export function fold(input: string): string {
  *
  * Empty or whitespace-only input is 'wrong'.
  */
-export function checkAnswer(input: string, answer: string, accept?: string[]): ValidationResult {
+export function checkAnswer(
+  input: string,
+  answer: string,
+  accept?: string[],
+  blanks?: string[],
+): ValidationResult {
+  // Multi-blank agreement (Ex2): the TYPE-mode renderer submits the per-blank endings
+  // joined with '|' (e.g. "a|a"); a single-blank item submits the bare ending ("a").
+  // CHOICE mode submits the FULL corrected phrase ("Non mi piace l'acqua fredda."),
+  // which always contains spaces. So: when `blanks` is supplied, route to per-blank
+  // grading UNLESS the input looks like a full phrase (contains a space) — that case
+  // falls through to the normal full-string comparison against `answer`.
+  if (blanks && blanks.length > 0 && !/\s/.test(input.trim())) {
+    return checkAgreementBlanks(input, blanks, answer);
+  }
+
   const ni = normalize(input);
   const candidates = [answer, ...(accept ?? [])];
 
@@ -152,4 +167,51 @@ export function checkAnswer(input: string, answer: string, accept?: string[]): V
   // Tier 3 — genuinely wrong. Practice surfaces the canonical answer itself,
   // so no message is attached here.
   return { status: 'wrong', normalized: ni, expected: answer };
+}
+
+/** Split a multi-blank agreement submission into its per-blank endings. Accepts the
+ *  canonical '|' separator as well as '/', ',', ';' and bare whitespace, so a learner
+ *  who types "a a" or "a/a" is still graded fairly. Empty tokens are PRESERVED (an
+ *  unfilled blank must count as a blank), so we split on the separators only. */
+function splitBlanks(value: string): string[] {
+  return normalize(value).split(/\s*[|/,;]\s*/);
+}
+
+/**
+ * Per-blank validation for a multi-blank agreement item (Ex2).
+ *  - 'correct' : every blank matches its ending exactly (after normalization);
+ *  - 'near'    : every blank matches, but at least one differs ONLY by an accent;
+ *  - 'wrong'   : a wrong arity, an empty blank, or any non-accent difference.
+ * `fullPhrase` (the corrected phrase) is reported as `expected` so the feedback box
+ * shows the readable sentence rather than the raw "a|a".
+ */
+export function checkAgreementBlanks(input: string, blanks: string[], fullPhrase: string): ValidationResult {
+  const submitted = splitBlanks(input);
+  const ni = submitted.join('|');
+
+  // Arity mismatch (missing/extra blank) is wrong.
+  if (submitted.length !== blanks.length) {
+    return { status: 'wrong', normalized: ni, expected: fullPhrase };
+  }
+
+  let hasNear = false;
+  for (let i = 0; i < blanks.length; i += 1) {
+    const got = normalize(submitted[i]);
+    const want = normalize(blanks[i]);
+    if (got === want) continue;
+    // An empty blank can never be correct.
+    if (got === '') return { status: 'wrong', normalized: ni, expected: fullPhrase };
+    if (fold(got) === fold(want)) {
+      hasNear = true;
+      continue;
+    }
+    return { status: 'wrong', normalized: ni, expected: fullPhrase };
+  }
+
+  return {
+    status: hasNear ? 'near' : 'correct',
+    normalized: ni,
+    expected: fullPhrase,
+    message: hasNear ? 'Casi correcto: revisa los acentos.' : undefined,
+  };
 }

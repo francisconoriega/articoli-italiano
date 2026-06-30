@@ -268,6 +268,72 @@ export function rollUpSkill(prev: SkillProgress | undefined, result: AnswerResul
   return next;
 }
 
+/**
+ * Reconstruct the ENTIRE skills map deterministically from a map of per-item
+ * progress — the single source of truth for skill aggregates after a merge.
+ *
+ * Why a rebuild (and not a replay)?  During normal play a skill aggregate is
+ * grown one answer at a time by {@link rollUpSkill}, whose mastery curve is
+ * order- and history-dependent (a multiplicative approach toward 1). That exact
+ * per-answer sequence is NOT recoverable from final item states — only the items
+ * survive a merge, not the interleaved answer log. So instead of replaying, we
+ * derive each skill's aggregate directly from the items it summarizes, which is
+ * fully deterministic and, by construction, CONSISTENT with those items:
+ *
+ *   - seen / correct / wrong : exact sums across the item progresses tagged with
+ *     the skill. These are recoverable byte-for-byte, because every answer bumps
+ *     the item's seen and exactly one of correct/wrong in lockstep with the skill
+ *     bump that rollUpSkill would have applied. So Σ items.seen == the seen the
+ *     live rollups would have reached, and likewise for correct/wrong.
+ *   - mastery : the mean of the per-item mastery over the items in the skill —
+ *     a stable proxy for "how well is this bucket known", clamped to the same
+ *     [floor, ceiling] band individual masteries live in. (It does not try to
+ *     reproduce rollUpSkill's exact running value, which is unrecoverable; it
+ *     reports a value that always agrees with the items shown beneath it.)
+ *
+ * Each item's own denormalized `skillIds` snapshot drives the rollup, so this is
+ * catalog-free: it needs only the item states, never the Item[] catalog. A skill
+ * that no surviving item references simply does not appear in the result (the old
+ * aggregate is intentionally dropped). An item with `seen === 0` still counts
+ * toward its skills' membership (so a freshly-seeded skill reads as low-mastery),
+ * matching how an unanswered item contributes mastery via createItemProgress.
+ *
+ * Pure: never mutates its input and never reads the clock.
+ */
+export function rebuildSkillProgress(
+  items: Record<string, ItemProgress>,
+): Record<string, SkillProgress> {
+  // Accumulate exact counters plus a running mastery sum + member count per skill.
+  const acc: Record<string, { seen: number; correct: number; wrong: number; masterySum: number; count: number }> = {};
+
+  for (const progress of Object.values(items)) {
+    const skillIds = progress.skillIds ?? [];
+    for (const skillId of skillIds) {
+      const bucket = acc[skillId] ?? { seen: 0, correct: 0, wrong: 0, masterySum: 0, count: 0 };
+      bucket.seen += progress.seen;
+      bucket.correct += progress.correct;
+      bucket.wrong += progress.wrong;
+      bucket.masterySum += progress.mastery;
+      bucket.count += 1;
+      acc[skillId] = bucket;
+    }
+  }
+
+  const skills: Record<string, SkillProgress> = {};
+  for (const [skillId, bucket] of Object.entries(acc)) {
+    const meanMastery = bucket.count === 0 ? 0 : bucket.masterySum / bucket.count;
+    skills[skillId] = {
+      seen: bucket.seen,
+      correct: bucket.correct,
+      wrong: bucket.wrong,
+      // Clamp to the same band the live aggregate is held in (see rollUpSkill).
+      mastery: Math.min(MASTERY_CEILING, Math.max(0, meanMastery)),
+    };
+  }
+
+  return skills;
+}
+
 /* ── Selection weighting ───────────────────────────────────────────────────── */
 
 /**

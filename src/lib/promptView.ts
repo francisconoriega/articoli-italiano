@@ -93,12 +93,18 @@ export function badgeTitle(badge: string): string {
       return 'Forma singular.'
     case 'Plural':
       return 'Forma plural.'
+    case 'Masculino':
+      return 'Sustantivo masculino (género gramatical).'
+    case 'Femenino':
+      return 'Sustantivo femenino (género gramatical).'
     case 'Cardinal':
       return 'Número cardinal: uno, due, tre… (cantidad).'
     case 'Ordinal':
       return 'Número ordinal: primo, secondo, terzo… (orden).'
     case 'Excepción':
       return 'Excepción de escritura (elisión): ventuno, ventotto, sessantotto…'
+    case 'Concordancia':
+      return 'Concordancia: el adjetivo copia el género y número del nombre.'
     default:
       return badge
   }
@@ -109,7 +115,21 @@ export function badgeTitle(badge: string): string {
 export type LineSegment =
   | { t: 'text'; v: string }
   | { t: 'tonic'; v: string }
-  | { t: 'blank' }
+  | { t: 'blank'; i: number }
+
+/**
+ * Length-aware display size for a hero/answer string: short answers (single words,
+ * numbers) keep the big punchy size; long ones (full sentences — e.g. agreement
+ * phrases) shrink so they don't overflow or dominate the card. Returns a CSS
+ * font-size to apply inline.
+ */
+export function fluidTextSize(text: string): string {
+  const n = (text ?? '').trim().length
+  if (n <= 14) return 'clamp(2rem, 6vw, 3.2rem)' // words: unchanged, full impact
+  if (n <= 24) return 'clamp(1.6rem, 4.8vw, 2.4rem)' // short phrases
+  if (n <= 36) return 'clamp(1.3rem, 4vw, 1.9rem)' // longer phrases
+  return 'clamp(1.05rem, 3.2vw, 1.5rem)' // full sentences
+}
 
 /** Match runs of letters (incl. accented) so we can tonic-split whole words. */
 const WORD_RE = /([A-Za-zÀ-ÿ]+)/
@@ -123,7 +143,7 @@ export function lineSegments(text: string, tonic: boolean): LineSegment[] {
   const out: LineSegment[] = []
   const parts = text.split(BLANK)
   parts.forEach((part, i) => {
-    if (i > 0) out.push({ t: 'blank' })
+    if (i > 0) out.push({ t: 'blank', i: i - 1 })
     if (!part) return
     if (!tonic) {
       out.push({ t: 'text', v: part })

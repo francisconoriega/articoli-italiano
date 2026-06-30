@@ -3,7 +3,7 @@
  * runs a pure, framework-agnostic validation pass. This file is the ONLY content
  * module the rest of the app imports; it never imports engine/ or lib/.
  */
-import type { AgreementEntry, Catalog, ExplanationRule, NumberRange } from '../types'
+import type { Catalog, ExplanationRule, NumberRange } from '../types'
 import { PERSONS } from '../types'
 import { nouns, explanationRules as articleRules } from './articles'
 import { verbs } from './verbs'
@@ -14,6 +14,7 @@ import { lessons } from './lessons'
 import { deixis } from './deixis'
 import { times } from './time'
 import { functional } from './functional'
+import { agreement } from './agreement'
 
 /**
  * Number coverage for Phase 1A (the generator in engine/numbers.ts produces the words):
@@ -36,9 +37,6 @@ const numbers: NumberRange[] = [
   // Ordinales regulares en -esimo a partir de 11 (brief §8).
   { id: 'ord-11-30', kind: 'ordinal', from: 11, to: 30, unit: 2, examWeight: 1 },
 ]
-
-/** Gender/number endings (exam Ex2) — multi-blank renderer is Phase 1B, so this is empty for now. */
-const agreement: AgreementEntry[] = []
 
 export const catalog: Catalog = {
   nouns,
@@ -129,6 +127,13 @@ const functionalRules: Record<string, ExplanationRule> = {
   },
 }
 
+const agreementRules: Record<string, ExplanationRule> = {
+  agreement: {
+    title: 'Concordancia (género y número)',
+    text: 'El adjetivo copia el **género** y el **número** del nombre. Clase **-o/-a**: -o/-i (masc.), -a/-e (fem.); clase **-e**: -e → -i (ambos géneros). Ej.: *le sorelle felici*.',
+  },
+}
+
 export const explanationRules: Record<string, ExplanationRule> = {
   ...articleRules,
   ...numberRules,
@@ -138,6 +143,7 @@ export const explanationRules: Record<string, ExplanationRule> = {
   ...motionRules,
   ...timeRules,
   ...functionalRules,
+  ...agreementRules,
 }
 
 /* ── Pure validation (no engine dependency) ─────────────────────────────────── */
@@ -146,10 +152,17 @@ export const explanationRules: Record<string, ExplanationRule> = {
  * Sanity-check the catalog at module load. Throws on a structural content bug:
  *  - a verb tense table missing one of the six persons,
  *  - a number range with from > to,
- *  - an empty noun/vocab surface form.
- * Item-level checks (unique ids, non-empty answers) live in engine/items.buildItems.
+ *  - an empty noun/vocab surface form,
+ *  - duplicate entry ids within any single entry array (cross-array reuse is allowed),
+ *  - empty/whitespace-only strings in any accept[] array,
+ *  - number range bounds or only[] values outside the engine's supported range
+ *    (cardinals: [0, 2000]; ordinals: [1, 2000]),
+ *  - agreement entries with phrase/answers length mismatch or empty answers,
+ *  - sentence/exam entries missing a non-empty answer or having empty accept strings.
  */
 export function validateCatalog(cat: Catalog): void {
+  // ── 1. Existing checks ──────────────────────────────────────────────────────
+
   for (const verb of cat.verbs) {
     for (const [tense, table] of Object.entries(verb.tenses)) {
       if (!table) continue
@@ -169,6 +182,125 @@ export function validateCatalog(cat: Catalog): void {
   for (const noun of cat.nouns) {
     if (!noun.singular.trim() || !noun.plural.trim()) {
       throw new Error(`validateCatalog: noun "${noun.id}" has an empty surface form`)
+    }
+  }
+
+  // ── 2. Unique entry-level ids WITHIN each entry array ───────────────────────
+  // Cross-array id reuse is LEGITIMATE: e.g. "mano" is both an article noun and a
+  // body-part vocab term. The generators namespace item ids by kind (article:…,
+  // vocab:body:…), and engine/items.ts already guarantees globally-unique ITEM ids.
+  // What we catch here is a duplicate SOURCE entry inside the same array — the real
+  // authoring mistake (e.g. two "mano" nouns, where one would silently overwrite).
+  {
+    const arrays: Array<[string, Array<{ id: string }>]> = [
+      ['nouns', cat.nouns],
+      ['verbs', cat.verbs],
+      ['numbers', cat.numbers],
+      ['vocab', cat.vocab],
+      ['agreement', cat.agreement],
+      ['sentences', cat.sentences],
+      ['pronouns', cat.pronouns],
+    ]
+    for (const [arrayName, entries] of arrays) {
+      const seen = new Set<string>()
+      for (const entry of entries) {
+        if (seen.has(entry.id)) {
+          throw new Error(
+            `validateCatalog: duplicate entry id "${entry.id}" within "${arrayName}"`,
+          )
+        }
+        seen.add(entry.id)
+      }
+    }
+  }
+
+  // ── 3. No empty/whitespace-only strings in accept[] arrays ──────────────────
+  // Pronouns
+  for (const pronoun of cat.pronouns) {
+    if (pronoun.accept) {
+      for (const alt of pronoun.accept) {
+        if (!alt || !alt.trim()) {
+          throw new Error(
+            `validateCatalog: pronoun "${pronoun.id}" has an empty/whitespace string in accept[]`,
+          )
+        }
+      }
+    }
+  }
+  // Sentences (includes all sentence arrays merged into cat.sentences)
+  for (const sentence of cat.sentences) {
+    if (sentence.accept) {
+      for (const alt of sentence.accept) {
+        if (!alt || !alt.trim()) {
+          throw new Error(
+            `validateCatalog: sentence "${sentence.id}" has an empty/whitespace string in accept[]`,
+          )
+        }
+      }
+    }
+  }
+
+  // ── 4. Number range scope sanity ────────────────────────────────────────────
+  // engine/numbers.ts supports cardinals [0, 2000] and ordinals [1, 2000].
+  const CARDINAL_MIN = 0
+  const CARDINAL_MAX = 2000
+  const ORDINAL_MIN = 1
+  const ORDINAL_MAX = 2000
+  for (const range of cat.numbers) {
+    const min = range.kind === 'cardinal' ? CARDINAL_MIN : ORDINAL_MIN
+    const max = range.kind === 'cardinal' ? CARDINAL_MAX : ORDINAL_MAX
+    if (range.from < min || range.from > max) {
+      throw new Error(
+        `validateCatalog: number range "${range.id}" (${range.kind}) has from=${range.from} outside [${min}, ${max}]`,
+      )
+    }
+    if (range.to < min || range.to > max) {
+      throw new Error(
+        `validateCatalog: number range "${range.id}" (${range.kind}) has to=${range.to} outside [${min}, ${max}]`,
+      )
+    }
+    if (range.only) {
+      for (const val of range.only) {
+        if (val < min || val > max) {
+          throw new Error(
+            `validateCatalog: number range "${range.id}" (${range.kind}) has only value ${val} outside [${min}, ${max}]`,
+          )
+        }
+      }
+    }
+  }
+
+  // ── 5. Agreement entry invariants ───────────────────────────────────────────
+  // phrase.split('_').length must equal answers.length + 1; answers must be non-empty.
+  // Passes trivially when agreement is [].
+  for (const entry of cat.agreement) {
+    if (!entry.answers || entry.answers.length === 0) {
+      throw new Error(
+        `validateCatalog: agreement entry "${entry.id}" has an empty answers[]`,
+      )
+    }
+    for (const ans of entry.answers) {
+      if (!ans || !ans.trim()) {
+        throw new Error(
+          `validateCatalog: agreement entry "${entry.id}" has an empty/whitespace string in answers[]`,
+        )
+      }
+    }
+    const blankCount = entry.phrase.split('_').length - 1
+    if (blankCount !== entry.answers.length) {
+      throw new Error(
+        `validateCatalog: agreement entry "${entry.id}" has ${blankCount} blank(s) in phrase but ${entry.answers.length} answer(s) — expected phrase.split('_').length === answers.length + 1`,
+      )
+    }
+  }
+
+  // ── 6. Sentence/exam entries: non-empty answer (and non-empty accept strings) ─
+  // (accept[] emptiness is already covered by check #3 above; this covers the answer field)
+  for (const sentence of cat.sentences) {
+    if (!sentence.answer || !sentence.answer.trim()) {
+      throw new Error(
+        `validateCatalog: sentence "${sentence.id}" has an empty/missing answer`,
+      )
     }
   }
 }

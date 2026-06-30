@@ -1,7 +1,9 @@
 <script lang="ts">
   import type { Item, PracticeMode, PresentationMode, Settings, ValidationResult } from '../types'
   import type { SessionStats } from '../engine/session'
+  import type { ChoiceOption } from '../engine/choices'
   import TypeAnswer from './exercises/TypeAnswer.svelte'
+  import AgreementAnswer from './exercises/AgreementAnswer.svelte'
   import Choice from './exercises/Choice.svelte'
   import Feedback from './Feedback.svelte'
   import CorrectionBanner from './CorrectionBanner.svelte'
@@ -29,6 +31,7 @@
     mode,
     currentMode,
     choices,
+    choiceOptions = null,
     selected = null,
     explanation = '',
     stageClass = '',
@@ -36,6 +39,7 @@
     showGloss = true,
     showTonic = true,
     banner = null,
+    onDismissBanner,
     poolSize,
     miniLesson,
     beat = null,
@@ -63,6 +67,7 @@
     mode: PracticeMode
     currentMode: PresentationMode
     choices: string[]
+    choiceOptions?: ChoiceOption[] | null
     selected?: string | null
     explanation?: string
     stageClass?: string
@@ -70,6 +75,7 @@
     showGloss?: boolean
     showTonic?: boolean
     banner?: Banner | null
+    onDismissBanner?: () => void
     poolSize: number
     miniLesson: MiniLesson
     beat?: string | null
@@ -105,7 +111,7 @@
     input.value = '' // allow re-importing the same file
   }
 
-  const MODES: PracticeMode[] = ['mixed', 'verbs', 'articles', 'numbers', 'vocab', 'time', 'functional']
+  const MODES: PracticeMode[] = ['mixed', 'verbs', 'articles', 'numbers', 'vocab', 'agreement', 'time', 'functional']
 </script>
 
 <section class="practice-panel">
@@ -116,6 +122,7 @@
       after={banner.after}
       meaning={banner.meaning}
       status={banner.status}
+      onDismiss={onDismissBanner}
     />
   {/if}
   <header class="topbar">
@@ -214,6 +221,7 @@
       <Choice
         {item}
         {choices}
+        {choiceOptions}
         {selected}
         disabled={phase === 'feedback'}
         {showGloss}
@@ -222,6 +230,20 @@
         showTimer={settings.timerEnabled}
         {timerScale}
         {onChoose}
+      />
+    {:else if item.kind === 'agreement'}
+      <!-- Multi-blank typing: one inline input per ending (Ex2). -->
+      <AgreementAnswer
+        {item}
+        bind:value
+        {result}
+        disabled={phase === 'feedback'}
+        {showGloss}
+        showTonic={showTonic}
+        {stageClass}
+        showTimer={settings.timerEnabled}
+        {timerScale}
+        onsubmit={onSubmit}
       />
     {:else}
       <TypeAnswer

@@ -1,23 +1,28 @@
 <script lang="ts">
-  // Anchored correction banner — shown at the top of the practice canvas when the
-  // learner misses or says "No sé". Big, persistent (~3s, auto-dismissed by the parent),
-  // with the answer in context and (for verbs) its meaning.
+  // Floating correction banner — shown sticky at the top of the practice canvas on
+  // NARROW screens when the learner misses or says "No sé" (on wide screens the inline
+  // Feedback box is used instead). Compact; stays until the learner advances or dismisses.
   let {
     answer,
     before = '',
     after = '',
     meaning = null,
     status = 'wrong',
+    onDismiss,
   }: {
     answer: string
     before?: string
     after?: string
     meaning?: string | null
     status?: 'wrong' | 'near'
+    onDismiss?: () => void
   } = $props()
 </script>
 
 <div class="correction-banner {status}" role="status" aria-live="polite">
+  {#if onDismiss}
+    <button type="button" class="cb-dismiss" onclick={onDismiss} aria-label="Cerrar">×</button>
+  {/if}
   <div class="cb-label">{status === 'near' ? 'Casi — la forma con acento es' : 'La respuesta correcta es'}</div>
   <div class="cb-answer">{answer}</div>
   {#if before || after}
@@ -32,11 +37,38 @@
     top: 8px;
     z-index: 40;
     border-radius: var(--radius);
-    padding: 12px 18px;
+    padding: 10px 40px 10px 16px;
     border: 2px solid var(--red);
     background: var(--red-soft);
     box-shadow: 0 14px 30px rgba(44, 39, 31, 0.16);
     animation: bannerIn 220ms ease;
+  }
+  /* The floating banner is for NARROW screens only; wide screens use the inline
+     Feedback box (which carries the same answer plus the rule). */
+  @media (min-width: 681px) {
+    .correction-banner {
+      display: none;
+    }
+  }
+  .cb-dismiss {
+    position: absolute;
+    top: 6px;
+    right: 8px;
+    width: 26px;
+    height: 26px;
+    display: grid;
+    place-items: center;
+    border: none;
+    background: transparent;
+    color: var(--muted);
+    font-size: 1.4rem;
+    line-height: 1;
+    cursor: pointer;
+    border-radius: 6px;
+  }
+  .cb-dismiss:hover {
+    background: rgba(44, 39, 31, 0.08);
+    color: var(--ink);
   }
   .correction-banner.near {
     border-color: var(--amber);
@@ -50,16 +82,16 @@
     color: var(--muted);
   }
   .cb-answer {
-    font-size: clamp(1.8rem, 5vw, 2.8rem);
+    font-size: clamp(1.2rem, 4.5vw, 1.6rem);
     font-weight: 900;
-    line-height: 1.05;
+    line-height: 1.1;
     color: var(--red);
   }
   .near .cb-answer {
     color: var(--amber-strong);
   }
   .cb-context {
-    font-size: 1.1rem;
+    font-size: 0.95rem;
     font-weight: 700;
     color: var(--ink);
     opacity: 0.9;

@@ -3,24 +3,40 @@
  *
  * presentationFor() reads ONLY the item's own per-item level (engine/mastery.ts owns
  * the promote/demote rules) — there is no cross-item or per-skill influence:
- *   level 0–1 → multiple-choice + Spanish gloss  (learning / recognition)
- *   level 2   → free typing, Italian-only         (mastered / production)
+ *   level 0 → multiple-choice + Spanish gloss + per-option helper notes (max support)
+ *   level 1 → multiple-choice + Spanish gloss, NO per-option notes  (less support)
+ *   level 2 → free typing, Italian-only                              (production)
  * The Spanish meaning stays through the whole multiple-choice phase and drops only at
  * the jump to typing — a single (possibly lucky) MC answer shouldn't remove the anchor.
  *
  * buildChoices() builds distractors that are pedagogically tight: for verbs, OTHER
  * conjugations of the SAME verb (and, only if needed, a same-class similar verb) —
  * never random unrelated verbs.
+ *
+ * buildChoicesWithNotes() returns the same set of options but annotated with an optional
+ * `note` string per option (populated only at level 0 for scaffolding purposes).
  */
 import type { Item, ItemProgress, PresentationStage, SkillProgress } from '../types'
 import { primedStartLevel } from './priming'
 
 /** Map a per-item presentation level to its stage (single source of the rule):
- *  free typing (Italian-only) once mastered; otherwise multiple-choice WITH the
- *  Spanish meaning — the gloss stays through the entire recognition phase. */
+ *  - level 0: MC + gloss + per-option notes (maximum scaffolding).
+ *  - level 1: MC + gloss, no per-option notes ("solo italiano-ish").
+ *  - level 2+: free typing, no gloss (production).
+ *
+ *  NOTE: L0 vs L1 are both MC+gloss in the PresentationStage sense; the distinction
+ *  (whether per-option notes appear) is exposed via {@link optionNotesForLevel}. */
 function stageForLevel(level: number): PresentationStage {
   if (level >= 2) return { input: 'type', gloss: false }
   return { input: 'choice', gloss: true }
+}
+
+/**
+ * Whether per-option helper notes should be shown at a given level.
+ * True only at L0 (maximum support); L1 is MC+gloss but WITHOUT notes ("solo italiano").
+ */
+export function optionNotesForLevel(level: number): boolean {
+  return level === 0
 }
 
 export function presentationFor(progress: ItemProgress | undefined): PresentationStage {
@@ -41,6 +57,25 @@ export function presentationForItem(
 ): PresentationStage {
   if (progress === undefined) return stageForLevel(primedStartLevel(item, skills))
   return presentationFor(progress)
+}
+
+/**
+ * A single multiple-choice option, optionally annotated with a helper note.
+ * The `note` is a small muted hint shown only at level 0 (max scaffolding):
+ *   - verb items: the infinitive form of that option's verb
+ *   - other items: absent (undefined)
+ */
+export interface ChoiceOption {
+  value: string
+  /** Optional helper note shown under the option at L0 only. */
+  note?: string
+  /**
+   * Optional short display label shown INSTEAD of `value` on the button. Agreement
+   * options use it to show only the filled blank-words ("sorelle · felici") rather than
+   * repeating the whole sentence; `value` stays the full string for grading + the
+   * `value === item.answer` correct-answer highlight.
+   */
+  label?: string
 }
 
 const DEF_ARTICLES = ['il', 'lo', 'la', "l'", 'i', 'gli', 'le']
@@ -67,6 +102,138 @@ function verbKey(item: Item): string | null {
 
 function personKey(item: Item): string | undefined {
   return item.skills.find((s) => s.startsWith('person:'))
+}
+
+/**
+ * Plausible WRONG endings for an agreement ending — the other gender/number forms a
+ * learner confuses it with (so the distractor phrases are tight, not random). Mirrors
+ * the four cells: -o ↔ -a (gender flip), -o/-a ↔ -i/-e (number flip), -e ↔ -i (number).
+ */
+function endingAlternatives(ending: string): string[] {
+  switch (ending) {
+    case 'o':
+      return ['a', 'i', 'e']
+    case 'a':
+      return ['o', 'e', 'i']
+    case 'i':
+      return ['e', 'o', 'a']
+    case 'e':
+      return ['i', 'a', 'o']
+    case 'he': // amiche/simpatiche spelling-change plural
+      return ['e', 'i', 'a']
+    default:
+      return ['i', 'a', 'o', 'e']
+  }
+}
+
+/** Interleave phrase segments with an ending-set into a full corrected phrase. */
+function fillPhrase(parts: string[], endings: string[]): string {
+  let out = ''
+  parts.forEach((part, i) => {
+    out += part
+    if (i < endings.length) out += endings[i]
+  })
+  return out
+}
+
+/**
+ * Build up to `n` full-phrase distractors for an agreement item by flipping ONE ending
+ * at a time (then, if needed, flipping all blanks to a single wrong ending). Each
+ * distractor is the phrase rendered with that wrong ending-set, so the options read as
+ * context ("…le pizze semplice" vs the correct "…le pizze semplici"), never bare letters.
+ */
+function agreementDistractorPhrases(item: Item, n: number, random: () => number): string[] {
+  const parts = item.prompt.parts
+  const blanks = item.prompt.blanks
+  if (!parts || !blanks || blanks.length === 0) return []
+  const correctKey = blanks.join('|')
+  const seen = new Set<string>([correctKey])
+  const phrases: string[] = []
+
+  // 1) Flip each blank in turn to each of its alternatives.
+  for (let i = 0; i < blanks.length; i += 1) {
+    for (const alt of endingAlternatives(blanks[i])) {
+      const next = blanks.slice()
+      next[i] = alt
+      const key = next.join('|')
+      if (seen.has(key)) continue
+      seen.add(key)
+      phrases.push(fillPhrase(parts, next))
+    }
+  }
+
+  // 2) Fallback for very short phrases: make every blank the same wrong ending.
+  for (const alt of ['o', 'a', 'i', 'e']) {
+    const next = blanks.map(() => alt)
+    const key = next.join('|')
+    if (seen.has(key)) continue
+    seen.add(key)
+    phrases.push(fillPhrase(parts, next))
+  }
+
+  return shuffle(phrases, random).slice(0, Math.max(0, n))
+}
+
+/**
+ * The blank-words alone, filled with an ending-set — the minimal contrast shown on an
+ * agreement option (e.g. "sorelle · felici"), since the full sentence already lives in
+ * the hero. For each blank: the trailing word of the left segment + the ending + the
+ * leading word of the right segment (trailing punctuation stripped).
+ */
+function agreementBlankWords(parts: string[], endings: string[]): string {
+  const words: string[] = []
+  for (let i = 0; i < endings.length; i += 1) {
+    const before = (parts[i] ?? '').split(/\s+/).pop() ?? ''
+    const afterRaw = (parts[i + 1] ?? '').match(/^\S*/)?.[0] ?? ''
+    const after = afterRaw.replace(/[.,;:!?¿¡"»«)]+$/, '')
+    words.push(`${before}${endings[i]}${after}`)
+  }
+  return words.join(' · ')
+}
+
+/**
+ * Agreement options as {@link ChoiceOption}s whose `value` is the full corrected phrase
+ * (for grading + the correct-answer highlight) but whose `label` is only the filled
+ * blank-words — so the buttons show "sorelle · felici" instead of repeating the whole
+ * sentence four times. Distractors flip plausible gender/number endings.
+ */
+export function buildAgreementOptions(
+  item: Item,
+  count = 4,
+  random: () => number = Math.random,
+): ChoiceOption[] {
+  const parts = item.prompt.parts
+  const blanks = item.prompt.blanks
+  if (!parts || !blanks || blanks.length === 0) return [{ value: item.answer }]
+
+  const sets: string[][] = []
+  const seen = new Set<string>([blanks.join('|')])
+  // Flip each blank in turn to each plausible wrong ending.
+  for (let i = 0; i < blanks.length; i += 1) {
+    for (const alt of endingAlternatives(blanks[i])) {
+      const next = blanks.slice()
+      next[i] = alt
+      const key = next.join('|')
+      if (seen.has(key)) continue
+      seen.add(key)
+      sets.push(next)
+    }
+  }
+  // Fallback for very short phrases: every blank the same wrong ending.
+  for (const alt of ['o', 'a', 'i', 'e']) {
+    const next = blanks.map(() => alt)
+    const key = next.join('|')
+    if (seen.has(key)) continue
+    seen.add(key)
+    sets.push(next)
+  }
+
+  const distractors = shuffle(sets, random).slice(0, Math.max(0, count - 1))
+  const chosen = shuffle([blanks.slice(), ...distractors], random)
+  return chosen.map((endings) => ({
+    value: fillPhrase(parts, endings),
+    label: agreementBlankWords(parts, endings),
+  }))
 }
 
 /**
@@ -129,6 +296,11 @@ export function buildChoices(
           (!person || i.skills.includes(person)),
       )
       .map((i) => i.answer)
+  } else if (item.kind === 'agreement') {
+    // Full-phrase options: the correct phrase plus phrases built from plausibly-WRONG
+    // ending-sets (gender/number flips). The correct option string equals item.answer,
+    // so Choice.svelte's `value === item.answer` highlight works unchanged.
+    candidates = agreementDistractorPhrases(item, count - 1, random)
   } else if (item.kind === 'article') {
     candidates = (INDEF_ARTICLES.includes(correct) ? INDEF_ARTICLES : DEF_ARTICLES).slice()
   } else if (item.kind === 'number') {
@@ -157,6 +329,59 @@ export function buildChoices(
   ).slice(0, Math.max(0, count - 1))
 
   return shuffle([correct, ...distractors], random)
+}
+
+/**
+ * Like {@link buildChoices} but returns {@link ChoiceOption} objects.
+ * When `withNotes` is true (level 0), verb-conjugation options carry the
+ * infinitive of their source verb as a helper note. Other kinds have no note.
+ * At level 1+ pass `withNotes: false` and all notes will be absent.
+ */
+export function buildChoicesWithNotes(
+  item: Item,
+  allItems: Item[],
+  count = 4,
+  withNotes = false,
+  random: () => number = Math.random,
+): ChoiceOption[] {
+  // Agreement: show only the filled blank-words on each button (the full sentence is
+  // already in the hero), with `value` kept as the full phrase for grading.
+  if (item.kind === 'agreement') return buildAgreementOptions(item, count, random)
+
+  const values = buildChoices(item, allItems, count, random)
+
+  if (!withNotes || item.kind !== 'verb-conjugation') {
+    return values.map((v) => ({ value: v }))
+  }
+
+  // For verb-conjugation at L0: annotate each option with the infinitive of
+  // the verb that produced that form, to help the learner disambiguate.
+  const verbInfByForm = new Map<string, string>()
+  for (const candidate of allItems) {
+    if (candidate.kind === 'verb-conjugation') {
+      const vSkill = candidate.skills.find((s) => s.startsWith('verb:')) ??
+        (candidate.skills.includes('essere') ? 'essere' :
+         candidate.skills.includes('avere') ? 'avere' : undefined)
+      if (vSkill) {
+        const inf = vSkill.startsWith('verb:') ? vSkill.slice('verb:'.length) : vSkill
+        verbInfByForm.set(candidate.answer, inf)
+      }
+    }
+  }
+
+  // The infinitive note only helps when the options span DIFFERENT verbs (the rare
+  // mixed-verb fallback set). In the usual conjugation drill every option is the SAME
+  // verb (other persons of it), so the note would just repeat that infinitive on every
+  // button — pure noise. Keep notes only when ≥2 distinct infinitives are present.
+  const infos = values.map((v) => verbInfByForm.get(v))
+  const distinct = new Set(infos.filter((i): i is string => i !== undefined))
+  if (distinct.size <= 1) {
+    return values.map((v) => ({ value: v }))
+  }
+  return values.map((v, idx) => {
+    const inf = infos[idx]
+    return inf ? { value: v, note: inf } : { value: v }
+  })
 }
 
 function shuffle<T>(arr: T[], random: () => number): T[] {

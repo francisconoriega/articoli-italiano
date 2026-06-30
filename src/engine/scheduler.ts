@@ -444,11 +444,53 @@ function newTopicOrder(infos: Map<string, TopicInfo>, byTopic: Map<string, Item[
   return news
 }
 
+/* ── Exam-drill lanes (sample-test proportions) ─────────────────────────────── */
+
+/**
+ * The sample-exam "shape": six lanes and their target share of an exam-drill round.
+ * These are the EX1–EX7 proportions from the exam blueprint (TASKS.md A3):
+ *   verbs ~35% / articles ~15% / endings ~15% / essere-avere ~15% / numbers ~10% / body ~10%.
+ *
+ * Lanes are mapped onto OUR taxonomy (item.kind / item.topic — we have no `lane`
+ * field). Note the deliberate split: the general `verbs` lane EXCLUDES essere/avere
+ * (kind 'essere-avere'), which is its own ~15% slice (exam Ex3). "endings" is the
+ * agreement lane (exam Ex2) — it has NO items in the current build, so the composer
+ * renormalizes around it (see composeExamDrillRound). Weights need not sum to 100;
+ * they are normalized at draw time over the lanes that actually have eligible items.
+ */
+export interface ExamLane {
+  name: string
+  weight: number
+  /** True for items belonging to this lane, given the OUR-taxonomy item. */
+  match: (item: Item) => boolean
+}
+
+export const EXAM_LANES: readonly ExamLane[] = [
+  {
+    name: 'verbs',
+    weight: 35,
+    match: (i) => i.kind === 'verb-conjugation' || i.kind === 'verb-choice',
+  },
+  { name: 'articles', weight: 15, match: (i) => i.kind === 'article' },
+  // Ex2 endings/agreement — empty in the current build; renormalized away gracefully.
+  { name: 'endings', weight: 15, match: (i) => i.kind === 'agreement' },
+  // Ex3 essere/avere in context — distinct from the general verbs lane.
+  { name: 'essere-avere', weight: 15, match: (i) => i.kind === 'essere-avere' },
+  { name: 'numbers', weight: 10, match: (i) => i.kind === 'number' },
+  // Ex7 body-part vocab. Prefer the body category but fall back to any vocab so the
+  // lane is never spuriously empty if body items are renamed/missing.
+  { name: 'body', weight: 10, match: (i) => i.kind === 'vocab' },
+]
+
 /* ── The composer ───────────────────────────────────────────────────────────── */
 
 /**
  * Compose one ordered round from an already-lane-filtered `pool`. See the file
  * header and the per-step comments for the full algorithm. Returns a RoundPlan.
+ *
+ * Exam-drill mode (`store.settings.mode === 'exam-drill'`) takes a dedicated
+ * proportional path (composeExamDrillRound) that builds the round in sample-exam
+ * proportions; every OTHER mode keeps the unchanged mixed/lane composer below.
  */
 export function composeRound(
   pool: Item[],
@@ -468,6 +510,12 @@ export function composeRound(
       miniLessonPart: 0,
       miniLessonParts: 0,
     }
+  }
+
+  // Exam-drill: proportional two-stage composer (sample-test shape). Detected from
+  // settings so no caller signature changes — composeRound already reads store.settings.
+  if (store.settings.mode === 'exam-drill') {
+    return composeExamDrillRound(pool, store, now, size, random)
   }
 
   // 1. Topic aggregates + lock set.
@@ -695,5 +743,166 @@ export function composeRound(
     miniLessonIds: block.map((i) => i.id),
     miniLessonPart,
     miniLessonParts,
+  }
+}
+
+/* ── Exam-drill composer (proportional, two-stage) ──────────────────────────── */
+
+/**
+ * One weighted draw WITHOUT replacement from `weighted` (mutated: the picked entry
+ * is spliced out). Returns the chosen item or null when the bag is empty. Shares the
+ * exact selectionWeight machinery the rest of the engine uses (no parallel weighting).
+ */
+function drawWeighted(weighted: { item: Item; w: number }[], random: () => number): Item | null {
+  if (weighted.length === 0) return null
+  let total = 0
+  for (const x of weighted) total += x.w
+  let cursor = random() * total
+  let idx = weighted.length - 1
+  for (let i = 0; i < weighted.length; i += 1) {
+    cursor -= weighted[i].w
+    if (cursor <= 0) {
+      idx = i
+      break
+    }
+  }
+  return weighted.splice(idx, 1)[0].item
+}
+
+/**
+ * Exam-drill round composer: build a round in the sample-exam proportions
+ * (EXAM_LANES) via two-stage selection — (1) pick a LANE by its target proportion,
+ * (2) pick an ITEM within that lane by the engine's existing weak/new/due/exam
+ * weighting (selectionWeight). Pure & deterministic given the injected `random`/`now`.
+ *
+ * Robustness & integration:
+ *  - LOCK + exam-survival carve-out: the same lock filtering as composeRound applies,
+ *    so locked number bands stay out unless examWeight >= EXAM_SURVIVAL_WEIGHT.
+ *  - EMPTY LANES: a lane with zero eligible items (e.g. the "endings"/agreement lane,
+ *    which has no items in the current build) is simply dropped from the lottery; the
+ *    remaining lanes' proportions are RENORMALIZED automatically because the lane draw
+ *    normalizes over present lanes only. A lane that empties mid-round (its bag runs
+ *    dry) is likewise removed and the rest renormalize.
+ *  - examDate RAMP: when an exam date is set, the ramp shifts the blend toward
+ *    review/coverage. Exam-drill composes ON TOP of that by front-loading DUE items
+ *    (most-overdue first) for the same fraction the ramp gives composeRound's focus
+ *    block, then filling the rest proportionally. With no examDate the ramp is neutral
+ *    (focusFraction 0.5) and behaves the same way — the two are composable.
+ *  - The returned RoundPlan has reason 'review' and no mini-lesson block (exam-drill is
+ *    interleaved by construction, not a blocked acquisition burst). focusTopic is null.
+ */
+export function composeExamDrillRound(
+  pool: Item[],
+  store: ProgressStore,
+  now: number,
+  size: number,
+  random: () => number = Math.random,
+): RoundPlan {
+  if (pool.length === 0 || size <= 0) {
+    return { items: [], focusTopic: null, focusState: null, reason: 'review', miniLessonIds: [], miniLessonPart: 0, miniLessonParts: 0 }
+  }
+
+  // Lock filtering + exam-survival carve-out (mirrors composeRound steps 1–2).
+  const infos = topicInfos(pool, store, now)
+  const locked = lockedTopics(infos)
+  const available = pool.filter(
+    (item) => !locked.has(item.topic) || item.examWeight >= EXAM_SURVIVAL_WEIGHT,
+  )
+  if (available.length === 0) {
+    return { items: [], focusTopic: null, focusState: null, reason: 'review', miniLessonIds: [], miniLessonPart: 0, miniLessonParts: 0 }
+  }
+
+  // examDate ramp — reuse composeRound's blend so exam-drill rides the ramp instead of
+  // fighting it. `focusFraction` here decides how much of the round is front-loaded as
+  // due-review coverage before the proportional fill; it widens as the exam nears.
+  const daysLeft = daysUntil(store.settings.examDate, now)
+  const focusFraction = daysLeft === null || daysLeft >= 7 ? 0.5 : 0.25 + 0.25 * clamp(daysLeft / 7, 0, 1)
+
+  const chosen: Item[] = []
+  const used = new Set<string>()
+
+  // Stage 0 (ramp coverage): front-load the most-overdue DUE items, capped at the
+  // ramp fraction of the round, so a near-exam drill leans into spaced review. These
+  // still respect the exam shape loosely (they are drawn from `available`, which is
+  // already exam-weighted by poolForMode), and the proportional fill below tops up
+  // whatever the exam shape still needs.
+  const dueBudget = clamp(Math.round(size * focusFraction), 0, size)
+  if (dueBudget > 0) {
+    const due = available
+      .filter((item) => isDue(store.items[item.id], now))
+      .sort((a, b) => overdueMs(store.items[b.id], now) - overdueMs(store.items[a.id], now))
+    for (const item of due) {
+      if (chosen.length >= dueBudget) break
+      if (used.has(item.id)) continue
+      chosen.push(item)
+      used.add(item.id)
+    }
+  }
+
+  // Build the per-lane weighted bags ONCE (without-replacement draws splice from them).
+  // A lane is present in the lottery only if it currently has at least one eligible item
+  // — this is what makes empty lanes (e.g. agreement/"endings") renormalize away cleanly.
+  interface LaneBag {
+    name: string
+    weight: number
+    bag: { item: Item; w: number }[]
+  }
+  const lanes: LaneBag[] = []
+  for (const lane of EXAM_LANES) {
+    const bag = available
+      .filter((item) => lane.match(item) && !used.has(item.id))
+      .map((item) => ({ item, w: Math.max(1e-6, selectionWeight(store.items[item.id], item, now)) }))
+    if (bag.length > 0) lanes.push({ name: lane.name, weight: lane.weight, bag })
+  }
+
+  // Stage 1+2: proportional two-stage fill of the remaining slots.
+  while (chosen.length < size && lanes.length > 0) {
+    // Stage 1 — lane lottery, normalized over PRESENT lanes only (auto-renormalization).
+    let total = 0
+    for (const l of lanes) total += l.weight
+    let cursor = random() * total
+    let laneIdx = lanes.length - 1
+    for (let i = 0; i < lanes.length; i += 1) {
+      cursor -= lanes[i].weight
+      if (cursor <= 0) {
+        laneIdx = i
+        break
+      }
+    }
+    const lane = lanes[laneIdx]
+
+    // Stage 2 — weighted item draw within the lane, using the engine's selectionWeight.
+    const item = drawWeighted(lane.bag, random)
+    if (item !== null && !used.has(item.id)) {
+      chosen.push(item)
+      used.add(item.id)
+    }
+    // Drop a drained lane so the remaining lanes' proportions renormalize next pass.
+    if (lane.bag.length === 0) lanes.splice(laneIdx, 1)
+  }
+
+  // Safety top-up: if every lane drained before the round is full (tiny catalogs /
+  // heavy de-dup), fill any remaining slots with the strongest leftover `available`
+  // items by selectionWeight so the round is never short. Deterministic (no random).
+  if (chosen.length < size) {
+    const leftovers = available
+      .filter((item) => !used.has(item.id))
+      .map((item) => ({ item, w: selectionWeight(store.items[item.id], item, now) }))
+      .sort((a, b) => b.w - a.w)
+    for (const { item } of leftovers) {
+      if (chosen.length >= size) break
+      chosen.push(item)
+      used.add(item.id)
+    }
+  }
+
+  return {
+    items: chosen.slice(0, size),
+    focusTopic: null,
+    focusState: null,
+    reason: 'review',
+    miniLessonIds: [],
+    miniLessonPart: 0,
+    miniLessonParts: 0,
   }
 }

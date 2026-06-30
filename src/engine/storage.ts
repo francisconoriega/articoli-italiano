@@ -15,8 +15,9 @@
 import type {
   ProgressStore,
   ItemProgress,
-  SkillProgress,
 } from '../types';
+
+import { rebuildSkillProgress } from './mastery';
 
 import {
   STORAGE_KEY,
@@ -193,11 +194,20 @@ export function saveStore(store: ProgressStore): void {
 
 /**
  * Merge two stores by RECENCY so neither side loses progress:
- *  - per item id, keep the ItemProgress with the more recent `lastSeen`;
- *  - per skill, keep the one with more exposures (`seen`);
- *  - history is concatenated and capped to the most recent 50 rounds;
+ *  - per item id, keep the ItemProgress with the more recent `lastSeen`
+ *    (the WHOLE record is picked as a unit — fields are never mixed across sides);
+ *  - the per-skill aggregates are NOT merged independently; they are RECOMPUTED
+ *    from the merged item states via rebuildSkillProgress so the skills map can
+ *    never disagree with the items it summarizes (see note below);
+ *  - history is concatenated, sorted, and capped to the most recent 50 rounds;
  *  - settings stay with `base` (device-local prefs like the timer).
  * Pure — used by both importStoreJson's caller and the dev cross-port sync.
+ *
+ * Why recompute skills instead of merging them?  The old code merged each skill
+ * aggregate independently by its own `seen` count, which could keep an aggregate
+ * describing item states that LOST the per-item merge — an inconsistent store
+ * where a skill's numbers no longer match the items beneath it. Deriving the
+ * skills map from the already-merged items guarantees consistency by construction.
  */
 export function mergeStores(base: ProgressStore, incoming: ProgressStore): ProgressStore {
   const items: Record<string, ItemProgress> = { ...incoming.items };
@@ -207,11 +217,9 @@ export function mergeStores(base: ProgressStore, incoming: ProgressStore): Progr
     items[id] = (bp.lastSeen ?? -1) >= (ip.lastSeen ?? -1) ? bp : ip;
   }
 
-  const skills: Record<string, SkillProgress> = { ...incoming.skills };
-  for (const [id, bs] of Object.entries(base.skills)) {
-    const is = skills[id];
-    skills[id] = !is || bs.seen >= is.seen ? bs : is;
-  }
+  // Discard BOTH sides' skill aggregates and rebuild deterministically from the
+  // merged item records, so the skills map is always consistent with the items.
+  const skills = rebuildSkillProgress(items);
 
   const history = [...incoming.history, ...base.history]
     .sort((a, b) => a.endedAt - b.endedAt)

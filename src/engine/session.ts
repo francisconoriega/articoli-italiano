@@ -22,7 +22,14 @@ import { applyAnswer, createItemProgress, rollUpSkill } from './mastery'
 import { createPrimedItemProgress } from './priming'
 import { saveStore, exportStoreJson, importStoreJson, mergeStores } from './storage'
 import { chooseNext, poolForMode, scheduleRecentMiss, pickRecentMiss, type RecentMiss } from './select'
-import { buildChoices, presentationFor, presentationForItem, CHOICE_ONLY_KINDS } from './choices'
+import {
+  buildChoicesWithNotes,
+  optionNotesForLevel,
+  presentationFor,
+  presentationForItem,
+  CHOICE_ONLY_KINDS,
+  type ChoiceOption,
+} from './choices'
 import { composeRound, topicInfos, type RoundPlan, type TopicState, type TopicInfo } from './scheduler'
 import { decorateItem } from './frames'
 
@@ -63,6 +70,8 @@ export class PracticeSession {
   currentMode: PresentationMode = 'type'
   /** Shuffled answer options when currentMode === 'choice' (empty otherwise). */
   currentChoices: string[] = []
+  /** Same options annotated with optional L0 helper notes (empty when not choice). */
+  currentChoiceOptions: ChoiceOption[] = []
   /** Whether to show the Spanish gloss for the current item (stage-driven). */
   currentShowGloss = true
   roundSize = ROUND_SIZE
@@ -266,6 +275,7 @@ export class PracticeSession {
       this.currentMode = 'type'
       this.currentShowGloss = true
       this.currentChoices = []
+      this.currentChoiceOptions = []
       return
     }
     // Skill-primed graduation: when an item is still UNSEEN, presentationForItem may
@@ -279,7 +289,13 @@ export class PracticeSession {
     const choiceOnly = CHOICE_ONLY_KINDS.has(item.kind)
     this.currentMode = choiceOnly ? 'choice' : this.store.settings.assist ? stage.input : 'type'
     this.currentShowGloss = (choiceOnly || stage.gloss) && this.store.settings.showGloss
-    this.currentChoices = this.currentMode === 'choice' ? buildChoices(item, this.allItems, 4) : []
+    // L0 (level 0) shows per-option helper notes; L1 is MC+gloss without them ("solo italiano").
+    const level = progress?.level ?? 0
+    this.currentChoiceOptions =
+      this.currentMode === 'choice'
+        ? buildChoicesWithNotes(item, this.allItems, 4, optionNotesForLevel(level))
+        : []
+    this.currentChoices = this.currentChoiceOptions.map((o) => o.value)
   }
 
   /**
@@ -336,7 +352,10 @@ export class PracticeSession {
   submit(input: string, now: number): SubmitResult {
     const item = this.current
     if (!item) throw new Error('PracticeSession.submit called with no current item')
-    const result = checkAnswer(input, item.answer, item.accept)
+    // Agreement (Ex2) type-mode submissions carry per-blank endings ('a|a'); pass the
+    // item's blanks so checkAnswer grades them per-blank. Choice-mode (full phrase) and
+    // every other kind ignore the extra arg (input has no '|' separator).
+    const result = checkAnswer(input, item.answer, item.accept, item.prompt.blanks)
     // ValidationStatus ('correct'|'near'|'wrong') is a subset of AnswerResult.
     return this.record(item, result, result.status, now)
   }

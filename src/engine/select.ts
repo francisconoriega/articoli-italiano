@@ -27,6 +27,8 @@ export function poolForMode(items: Item[], mode: PracticeMode): Item[] {
       )
     case 'articles':
       return items.filter((i) => i.kind === 'article')
+    case 'agreement':
+      return items.filter((i) => i.kind === 'agreement')
     case 'numbers':
       return items.filter((i) => i.kind === 'number')
     case 'vocab':
@@ -36,12 +38,28 @@ export function poolForMode(items: Item[], mode: PracticeMode): Item[] {
     case 'functional':
       return items.filter((i) => i.kind === 'functional-choice')
     case 'exam-drill':
-      // Phase 1A: a simple exam-weighted lane (the proportional composer lands in 1B).
-      return items.filter((i) => i.examWeight >= 2 && i.kind !== 'agreement')
+      // The exam shape (sample-test proportions) is composed downstream by the
+      // scheduler's proportional two-stage composer (composeExamDrillRound), which
+      // needs ALL exam lanes well-populated — verbs / articles / essere-avere /
+      // numbers / body-vocab (and agreement once it exists). So this lane hands the
+      // composer the full exam-relevant catalog (every kind that maps to an exam
+      // lane) rather than pre-thinning by examWeight, which would starve the lighter
+      // lanes (e.g. body vocab at examWeight 1). The 'agreement' kind has no renderer
+      // yet but is harmless to include — it has no items in the current build.
+      return items.filter(
+        (i) =>
+          i.kind === 'verb-conjugation' ||
+          i.kind === 'verb-choice' ||
+          i.kind === 'essere-avere' ||
+          i.kind === 'article' ||
+          i.kind === 'number' ||
+          i.kind === 'vocab' ||
+          i.kind === 'agreement',
+      )
     case 'mixed':
     default:
-      // Agreement (Ex2 multi-blank) has no renderer until Phase 1B — keep it out of practice.
-      return items.filter((i) => i.kind !== 'agreement')
+      // Mixed = the whole catalog, including agreement (Ex2) now that it has a renderer.
+      return items.slice()
   }
 }
 

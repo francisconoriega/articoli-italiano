@@ -28,6 +28,14 @@
 
   const pv = $derived(promptView(item))
 
+  /** CSS class to tint a badge by grammar category. */
+  function badgeClass(badge: string): string {
+    if (badge === 'Singular') return 'badge grammar-singular'
+    if (badge === 'Plural') return 'badge grammar-plural'
+    if (badge === 'Excepción') return 'badge warn'
+    return 'badge'
+  }
+
   let inputRef = $state<HTMLInputElement | null>(null)
 
   const inputState = $derived(
@@ -59,7 +67,7 @@
 
   {#if pv.badges.length}
     <div class="badge-row">
-      {#each pv.badges as b}<span class="badge" class:warn={b === 'Excepción'} title={badgeTitle(b)}>{b}</span>{/each}
+      {#each pv.badges as b}<span class={badgeClass(b)} title={badgeTitle(b)}>{b}</span>{/each}
     </div>
   {/if}
 

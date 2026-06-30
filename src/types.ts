@@ -104,6 +104,16 @@ export interface ItemPrompt {
   badges?: string[];
   /** Input placeholder hint, e.g. the candidate articles "un · uno · una · un'". */
   placeholder?: string;
+  /**
+   * Multi-blank (agreement / Ex2) only. `parts` are the phrase segments around each
+   * blank (phrase.split('_'), so parts.length === blanks.length + 1); `blanks` are the
+   * correct endings in order. The multi-blank renderer interleaves them — part, input,
+   * part, input, … — and submits the endings joined with '|' for per-blank validation.
+   * Single-blank kinds (verb/article/…) leave both undefined and use the `____` token
+   * inside `text` exactly as before.
+   */
+  parts?: string[];
+  blanks?: string[];
 }
 
 /** How the current item is presented: easy multiple-choice, or free typing ("real"). */
@@ -261,6 +271,7 @@ export type PracticeMode =
   | 'articles'
   | 'numbers'
   | 'vocab'
+  | 'agreement'
   | 'time'
   | 'functional'
   | 'exam-drill';
@@ -451,6 +462,16 @@ export interface AgreementEntry {
   unit: number;
   examWeight?: number;
   source?: string[];
+  /**
+   * The agreement CELL — the gender + number the whole phrase agrees in. Optional &
+   * backward-compatible: when present, the generator uses them for the topic
+   * (`agreement:fem-plural` …) and the Femenino/Masculino + Singular/Plural badges;
+   * when absent it falls back to inferring the cell from the `agreement:<cell>` skill.
+   * Phrase #4 ("Giulia è simpatic_ e Matteo è antipatic_") mixes two cells across two
+   * clauses — there `gender`/`number` are left undefined and the skills carry both.
+   */
+  gender?: Gender;
+  number?: GrammaticalNumber;
 }
 
 /**
