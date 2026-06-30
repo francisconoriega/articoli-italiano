@@ -216,7 +216,7 @@
   .legend {
     display: inline-flex;
     gap: 10px;
-    font-size: 0.7rem;
+    font-size: 0.78rem;
     color: var(--muted);
   }
   .legend-item {
@@ -231,7 +231,7 @@
     display: inline-block;
   }
   .dot.cov {
-    background: var(--amber);
+    background: var(--amber-strong);
   }
   .dot.dom {
     background: var(--accent);
@@ -267,8 +267,8 @@
     color: var(--accent-strong);
   }
   .reinforce-reason {
-    font-size: 0.78rem;
-    color: #3f6b58;
+    font-size: 0.8rem;
+    color: #355d4c;
     margin: 0;
   }
 
@@ -319,7 +319,7 @@
     flex: 0 0 auto;
     border-radius: 999px;
     padding: 2px 7px;
-    font-size: 0.7rem;
+    font-size: 0.74rem;
     font-weight: 700;
   }
   .cat-flag.weak {
@@ -333,16 +333,16 @@
   }
   .cat-nums {
     flex: 0 0 auto;
-    font-size: 0.74rem;
-    min-width: 70px;
+    font-size: 0.82rem;
+    min-width: 76px;
     text-align: right;
   }
   .cat-nums b {
-    color: var(--accent);
-    font-weight: 600;
+    color: var(--accent-strong);
+    font-weight: 700;
   }
   .cat-nums i {
-    color: var(--amber);
+    color: var(--amber-strong);
     font-style: normal;
   }
   .bars {
@@ -363,7 +363,7 @@
     border-radius: 999px;
   }
   .bar-fill.cov {
-    background: var(--amber);
+    background: var(--amber-strong);
   }
   .bar-fill.dom {
     background: var(--accent);
@@ -409,15 +409,15 @@
   }
   .subtopic-name {
     flex: 1;
-    font-size: 0.82rem;
-    color: #3a3833;
+    font-size: 0.85rem;
+    color: #34322d;
     overflow-wrap: anywhere;
   }
   .subtopic-dom {
     flex: 0 0 auto;
-    font-size: 0.74rem;
-    color: var(--accent);
-    min-width: 30px;
+    font-size: 0.8rem;
+    color: var(--accent-strong);
+    min-width: 34px;
     text-align: right;
   }
   .dominados {
@@ -427,7 +427,7 @@
     align-items: center;
     gap: 6px;
     padding: 6px 2px 4px;
-    font-size: 0.76rem;
+    font-size: 0.8rem;
     color: var(--muted);
     width: 100%;
     border-radius: 4px;
@@ -453,7 +453,7 @@
     flex: 0 0 auto;
     border-radius: 999px;
     padding: 2px 9px;
-    font-size: 0.7rem;
+    font-size: 0.74rem;
     font-weight: 800;
     text-transform: uppercase;
     letter-spacing: 0.02em;
