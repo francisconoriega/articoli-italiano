@@ -42,6 +42,9 @@
   let current = $state<Item | null>(null)
   let value = $state('')
   let result = $state<ValidationResult | null>(null)
+  /** Whether the last submitted answer was an error (wrong / No sé / timeout) — lets the
+   *  conjugation table surface on a miss even during interleaved review (not a lesson). */
+  let lastAnswerError = $state(false)
   let phase = $state<'answering' | 'feedback'>('answering')
   let stats = $state<SessionStats>(session.stats())
   let mode = $state<PracticeMode>(session.mode)
@@ -89,11 +92,12 @@
   }
 
   // The conjugation cheat-sheet to show in the sidebar, or null. Testing-effect rule:
-  // visible during a verb's mini-lesson (acquisition) and in feedback; HIDDEN during an
-  // interleaved review test so retrieval practice isn't short-circuited.
+  // visible during a verb's mini-lesson (acquisition, forms masked until answered); in
+  // interleaved review it stays HIDDEN while answering and only appears in feedback if the
+  // answer was an error (remediation) — a correct review answer needs no cheat-sheet.
   const verbTable = $derived.by(() => {
     if (!current || !currentTopic || !currentTopic.startsWith('verb:')) return null
-    const show = isMiniLesson || phase === 'feedback'
+    const show = isMiniLesson || (phase === 'feedback' && lastAnswerError)
     if (!show) return null
     const inf = currentTopic.slice('verb:'.length)
     const verb = verbByInf.get(inf)
@@ -317,6 +321,7 @@
   function applyResult(r: SubmitResult) {
     clearTimer()
     result = r.result
+    lastAnswerError = r.answerResult !== 'correct' && r.answerResult !== 'near'
     phase = 'feedback'
     explanation = explanationFor(r.item)
     sync()

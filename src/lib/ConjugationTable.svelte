@@ -54,9 +54,9 @@
         <span
           class="form"
           class:form-highlight={isAsked && highlight}
-          class:form-masked={isAsked && !highlight}
+          class:form-masked={!highlight}
         >
-          {#if isAsked && !highlight}
+          {#if !highlight}
             <span class="form-mask" aria-label="respuesta oculta">·····</span>
           {:else if stress}{stress.pre}<span class="stress">{stress.vowel}</span>{stress.post}{:else}{table[
               person
