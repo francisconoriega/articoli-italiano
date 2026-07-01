@@ -292,18 +292,57 @@ h2 {
    `line-height` is set explicitly (not inherited) because the surrounding
    `.prompt-hero`/`.prompt-task` use a tight headline line-height (1.06–1.2) that
    crops ascenders/descenders when applied to an <input>'s text — long
-   placeholders like "il · lo · la · l'" got clipped against the border. */
+   placeholders like "il · lo · la · l'" got clipped against the border.
+   Width is set directly on the element (inline style, from TypeAnswer.svelte's
+   JS measurement) instead of the <input>'s default ~20-character intrinsic
+   width, which at the hero font size ballooned into a full-width, over-tall box
+   that pushed the following word onto its own line. A CSS-only auto-sizer (an
+   inline-grid cell shared with hidden "ghost" text) was tried first, but a grid
+   box with several overlapping items doesn't reliably synthesize a text
+   baseline for the surrounding line — it hung below the line instead of sitting
+   on it. Staying a plain inline-block keeps the (proven-correct) baseline
+   behavior; see the .answer-measure-mirror comment for how the width is found. */
 .answer-input.inline {
   display: inline-block;
   width: auto;
-  min-width: 130px;
+  min-width: 2ch; /* non-zero floor before the first JS measurement lands */
+  max-width: 100%;
   flex: none;
   vertical-align: baseline;
   font-size: inherit;
   font-weight: inherit;
-  line-height: 1.3;
-  min-height: 1.6em;
-  padding: 4px 12px;
+  line-height: 1.25;
+  /* Reset the base .answer-input's fixed 64px min-height — on the inline chip it
+     forced an over-tall box at the smaller task font. Height is content-driven
+     (line-height + padding) so it stays proportional at every font size. */
+  min-height: 0;
+  /* em-based padding stays visibly proportional at the big hero size — a fixed
+     12px read as "no padding" against ~54px glyphs. */
+  padding: 0.14em 0.5em;
+}
+
+/* Off-screen text mirrors (placeholder + current value) used only to MEASURE
+   the pixel width the inline input needs, in JS (TypeAnswer.svelte). Absolute
+   positioning takes them fully out of flow — they cannot affect the line's
+   layout or baseline — while still inheriting the ambient font-size (which
+   varies via clamp()) from the same parent as the input. Their border+padding
+   match the input's exactly, so `offsetWidth` IS the width the input's box
+   needs for that text; JS takes the wider of the two, which is how the input
+   gets a floor at the placeholder's width without ever shrinking narrower
+   while a shorter answer is typed. */
+.answer-measure-mirror {
+  position: absolute;
+  visibility: hidden;
+  left: -9999px;
+  top: -9999px;
+  white-space: pre;
+  pointer-events: none;
+  box-sizing: border-box;
+  border: 2px solid transparent;
+  padding: 0.14em 0.5em;
+  font-size: inherit;
+  font-weight: inherit;
+  line-height: 1.25;
 }
 
 /* ── Unified prompt-card anatomy (badges → hero → meaning → task → answer) ──── */

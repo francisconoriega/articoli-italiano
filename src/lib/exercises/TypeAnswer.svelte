@@ -42,10 +42,47 @@
     !result ? '' : result.status === 'correct' ? 'is-correct' : result.status === 'near' ? 'is-near' : 'is-wrong',
   )
 
+  const placeholder = $derived(item.prompt.placeholder ?? 'Escribe…')
+
   // Autofocus the input whenever the item changes (and not in feedback).
   $effect(() => {
     void item.id
     if (!disabled && inputRef) inputRef.focus()
+  })
+
+  // Auto-width for the inline blank, measured in JS instead of CSS. Two earlier
+  // CSS-only attempts both had real problems: `field-sizing:content` sizes to
+  // the CURRENT value alone, so the box shrinks below the placeholder width as
+  // soon as you type something shorter than it; a shared inline-grid "ghost"
+  // cell (measuring via an auto-sized grid track) kept the placeholder as a
+  // floor, but a grid box with several overlapping items doesn't reliably
+  // synthesize a text baseline — it hung below the surrounding line's baseline
+  // instead of sitting on it. These mirrors are `position:absolute` (entirely
+  // out of flow, so they cannot affect the line's layout or baseline) and
+  // mirror the input's exact border+padding box metrics, so the wider of the
+  // two `offsetWidth`s IS the width the (plain, still-inline-block) input
+  // should be — giving the placeholder-floor sizing without touching alignment.
+  let placeholderMirrorRef = $state<HTMLSpanElement | null>(null)
+  let valueMirrorRef = $state<HTMLSpanElement | null>(null)
+  let inlineWidth = $state<number | null>(null)
+
+  function measureInlineWidth() {
+    if (placeholderMirrorRef && valueMirrorRef) {
+      inlineWidth = Math.max(placeholderMirrorRef.offsetWidth, valueMirrorRef.offsetWidth)
+    }
+  }
+
+  $effect(() => {
+    void value
+    void placeholder
+    measureInlineWidth()
+  })
+
+  // The hero/task font-size uses clamp(), so it scales with viewport width —
+  // re-measure on resize too, not just on text changes.
+  $effect(() => {
+    window.addEventListener('resize', measureInlineWidth)
+    return () => window.removeEventListener('resize', measureInlineWidth)
   })
 
   function handleKeydown(e: KeyboardEvent) {
@@ -110,13 +147,19 @@
     class={`answer-input ${inline ? 'inline' : ''} ${inputState}`}
     type="text"
     aria-label="Respuesta"
-    placeholder={item.prompt.placeholder ?? 'Escribe…'}
+    placeholder={placeholder}
     autocapitalize="off"
     autocorrect="off"
     spellcheck={false}
     readonly={disabled}
     onkeydown={handleKeydown}
+    size={inline ? 1 : undefined}
+    style={inline && inlineWidth != null ? `width:${inlineWidth}px` : undefined}
   />
+  {#if inline}
+    <span class="answer-measure-mirror" bind:this={placeholderMirrorRef} aria-hidden="true">{placeholder}</span>
+    <span class="answer-measure-mirror" bind:this={valueMirrorRef} aria-hidden="true">{value}</span>
+  {/if}
 {/snippet}
 
 {#snippet line(text: string, tonic: boolean)}
