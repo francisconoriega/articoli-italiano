@@ -607,7 +607,16 @@
     {/if}
 
     {#if isMobile && view === 'progreso'}
-      <ProgressTree {categoryRows} {nowReinforcing} {reinforceReason} {verbByInf} {itemsByTopic} />
+      <ProgressTree
+        {categoryRows}
+        {nowReinforcing}
+        {reinforceReason}
+        {verbByInf}
+        {itemsByTopic}
+        activeTopic={currentTopic}
+        activeAskedPerson={personOfCurrent(current)}
+        activeRevealed={phase === 'feedback'}
+      />
     {/if}
   </section>
 
@@ -622,7 +631,16 @@
       />
     {/if}
 
-    <ProgressTree {categoryRows} {nowReinforcing} {reinforceReason} {verbByInf} {itemsByTopic} />
+    <ProgressTree
+      {categoryRows}
+      {nowReinforcing}
+      {reinforceReason}
+      {verbByInf}
+      {itemsByTopic}
+      activeTopic={currentTopic}
+      activeAskedPerson={personOfCurrent(current)}
+      activeRevealed={phase === 'feedback'}
+    />
   </aside>
 
   {#if isMobile}

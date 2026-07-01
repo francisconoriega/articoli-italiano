@@ -1,5 +1,5 @@
 <script lang="ts">
-  import type { Item, VerbEntry } from '../types'
+  import type { Item, Person, VerbEntry } from '../types'
   import { BLANK } from '../types'
   import type { TopicState, TopicInfo, CategoryInfo } from '../engine/scheduler'
   import { topicLabel, subtopicLabel, categoryLabel } from './labels'
@@ -12,12 +12,20 @@
     reinforceReason,
     verbByInf,
     itemsByTopic,
+    activeTopic,
+    activeAskedPerson,
+    activeRevealed,
   }: {
     categoryRows: CategoryInfo[]
     nowReinforcing: string[]
     reinforceReason: string
     verbByInf: Map<string, VerbEntry>
     itemsByTopic: Map<string, Item[]>
+    // Identifies the verb currently being drilled in the exercise above, so its
+    // reference card here stays masked in sync rather than leaking the answer.
+    activeTopic: string | null
+    activeAskedPerson: Person | null
+    activeRevealed: boolean
   } = $props()
 
   const STATE_LABEL: Record<TopicState, string> = {
@@ -109,9 +117,16 @@
     </button>
     {#if refOpen}
       {@const verb = verbFor(t.topic)}
+      {@const isActive = t.topic === activeTopic}
       <div class="subtopic-ref">
         {#if verb && verb.tenses.presente}
-          <ConjugationTable infinitive={verb.infinitive} gloss={verb.gloss} table={verb.tenses.presente} />
+          <ConjugationTable
+            infinitive={verb.infinitive}
+            gloss={verb.gloss}
+            table={verb.tenses.presente}
+            askedPerson={isActive ? activeAskedPerson : null}
+            highlight={!isActive || activeRevealed}
+          />
         {:else}
           {@const rows = referenceRows(t.topic)}
           {#if rows.length}
