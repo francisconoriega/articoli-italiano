@@ -309,8 +309,6 @@ function vocabCategoryHint(category: string): string {
 }
 
 function vocabToItems(entry: VocabEntry): Item[] {
-  // For "piedi"/"occhi" we also accept the singular form.
-  const accept = entry.id === 'piedi' ? ['piede'] : entry.id === 'occhi' ? ['occhio'] : undefined
   return [
     {
       id: `vocab:${entry.category}:${entry.id}`,
@@ -321,7 +319,6 @@ function vocabToItems(entry: VocabEntry): Item[] {
         hint: `${vocabCategoryHint(entry.category)} — escribe en italiano`,
       },
       answer: entry.term,
-      accept,
       skills: [`vocab:${entry.category}`],
       unit: entry.unit,
       examWeight: entry.examWeight ?? 1,

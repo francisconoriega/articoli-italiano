@@ -442,7 +442,6 @@ export interface VocabEntry {
   category: string;
   gender?: Gender;
   article?: DefiniteArticle;
-  plural?: string;
   image?: string;
   unit: number;
   examWeight?: number;

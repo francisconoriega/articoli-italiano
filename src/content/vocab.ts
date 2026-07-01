@@ -3,12 +3,16 @@ import type { VocabEntry } from '../types';
 /**
  * Body parts vocabulary (Unit 2, Exam Ex7).
  *
- * The 10 EXAM terms (examWeight: 3) + 8 extras (examWeight: 1).
+ * The 10 EXAM terms (examWeight: 3) + 8 extras (examWeight: 1) — each in whichever
+ * number the exam/book used. Every one of those 18 also gets a companion entry
+ * (examWeight: 1) in the OTHER number, so both singular and plural are quizzed for
+ * every word (several are irregular: braccio/braccia, dito/dita, labbro/labbra
+ * switch to feminine in the plural; orecchio's common plural is fem. "le orecchie").
  * All category: 'body'. Glosses are ES-MX.
  */
 export const vocab: VocabEntry[] = [
   // ────────────────────────────────────────────────────────────────────────────
-  // 10 EXAM terms (examWeight: 3)
+  // 10 EXAM terms (examWeight: 3) + their singular/plural companion
   // ────────────────────────────────────────────────────────────────────────────
 
   {
@@ -18,9 +22,18 @@ export const vocab: VocabEntry[] = [
     category: 'body',
     gender: 'm',
     article: 'i',
-    plural: 'capelli',
     unit: 2,
     examWeight: 3,
+  },
+  {
+    id: 'capello',
+    term: 'capello',
+    gloss: 'un cabello / un pelo',
+    category: 'body',
+    gender: 'm',
+    article: 'il',
+    unit: 2,
+    examWeight: 1,
   },
 
   {
@@ -30,9 +43,18 @@ export const vocab: VocabEntry[] = [
     category: 'body',
     gender: 'm',
     article: 'gli',
-    plural: 'occhi',
     unit: 2,
     examWeight: 3,
+  },
+  {
+    id: 'occhio',
+    term: 'occhio',
+    gloss: 'el ojo',
+    category: 'body',
+    gender: 'm',
+    article: "l'",
+    unit: 2,
+    examWeight: 1,
   },
 
   {
@@ -45,6 +67,16 @@ export const vocab: VocabEntry[] = [
     unit: 2,
     examWeight: 3,
   },
+  {
+    id: 'nasi',
+    term: 'nasi',
+    gloss: 'las narices',
+    category: 'body',
+    gender: 'm',
+    article: 'i',
+    unit: 2,
+    examWeight: 1,
+  },
 
   {
     id: 'collo',
@@ -56,6 +88,16 @@ export const vocab: VocabEntry[] = [
     unit: 2,
     examWeight: 3,
   },
+  {
+    id: 'colli',
+    term: 'colli',
+    gloss: 'los cuellos',
+    category: 'body',
+    gender: 'm',
+    article: 'i',
+    unit: 2,
+    examWeight: 1,
+  },
 
   {
     id: 'braccio',
@@ -64,9 +106,18 @@ export const vocab: VocabEntry[] = [
     category: 'body',
     gender: 'm',
     article: 'il',
-    plural: 'le braccia',
     unit: 2,
     examWeight: 3,
+  },
+  {
+    id: 'braccia',
+    term: 'braccia',
+    gloss: 'los brazos',
+    category: 'body',
+    gender: 'f',
+    article: 'le',
+    unit: 2,
+    examWeight: 1,
   },
 
   {
@@ -79,6 +130,16 @@ export const vocab: VocabEntry[] = [
     unit: 2,
     examWeight: 3,
   },
+  {
+    id: 'gambe',
+    term: 'gambe',
+    gloss: 'las piernas',
+    category: 'body',
+    gender: 'f',
+    article: 'le',
+    unit: 2,
+    examWeight: 1,
+  },
 
   {
     id: 'piedi',
@@ -87,9 +148,18 @@ export const vocab: VocabEntry[] = [
     category: 'body',
     gender: 'm',
     article: 'i',
-    plural: 'piedi',
     unit: 2,
     examWeight: 3,
+  },
+  {
+    id: 'piede',
+    term: 'piede',
+    gloss: 'el pie',
+    category: 'body',
+    gender: 'm',
+    article: 'il',
+    unit: 2,
+    examWeight: 1,
   },
 
   {
@@ -102,6 +172,16 @@ export const vocab: VocabEntry[] = [
     unit: 2,
     examWeight: 3,
   },
+  {
+    id: 'bocche',
+    term: 'bocche',
+    gloss: 'las bocas',
+    category: 'body',
+    gender: 'f',
+    article: 'le',
+    unit: 2,
+    examWeight: 1,
+  },
 
   {
     id: 'pancia',
@@ -113,6 +193,16 @@ export const vocab: VocabEntry[] = [
     unit: 2,
     examWeight: 3,
   },
+  {
+    id: 'pance',
+    term: 'pance',
+    gloss: 'las panzas / las barrigas',
+    category: 'body',
+    gender: 'f',
+    article: 'le',
+    unit: 2,
+    examWeight: 1,
+  },
 
   {
     id: 'mano',
@@ -121,13 +211,22 @@ export const vocab: VocabEntry[] = [
     category: 'body',
     gender: 'f',
     article: 'la',
-    plural: 'le mani',
     unit: 2,
     examWeight: 3,
   },
+  {
+    id: 'mani',
+    term: 'mani',
+    gloss: 'las manos',
+    category: 'body',
+    gender: 'f',
+    article: 'le',
+    unit: 2,
+    examWeight: 1,
+  },
 
   // ────────────────────────────────────────────────────────────────────────────
-  // 8 EXTRAS (examWeight: 1)
+  // 8 EXTRAS (examWeight: 1) + their singular/plural companion
   // ────────────────────────────────────────────────────────────────────────────
 
   {
@@ -140,6 +239,16 @@ export const vocab: VocabEntry[] = [
     unit: 2,
     examWeight: 1,
   },
+  {
+    id: 'orecchie',
+    term: 'orecchie',
+    gloss: 'las orejas',
+    category: 'body',
+    gender: 'f',
+    article: 'le',
+    unit: 2,
+    examWeight: 1,
+  },
 
   {
     id: 'denti',
@@ -148,7 +257,16 @@ export const vocab: VocabEntry[] = [
     category: 'body',
     gender: 'm',
     article: 'i',
-    plural: 'denti',
+    unit: 2,
+    examWeight: 1,
+  },
+  {
+    id: 'dente',
+    term: 'dente',
+    gloss: 'el diente',
+    category: 'body',
+    gender: 'm',
+    article: 'il',
     unit: 2,
     examWeight: 1,
   },
@@ -160,7 +278,16 @@ export const vocab: VocabEntry[] = [
     category: 'body',
     gender: 'f',
     article: 'le',
-    plural: 'labbra',
+    unit: 2,
+    examWeight: 1,
+  },
+  {
+    id: 'labbro',
+    term: 'labbro',
+    gloss: 'el labio',
+    category: 'body',
+    gender: 'm',
+    article: 'il',
     unit: 2,
     examWeight: 1,
   },
@@ -175,6 +302,16 @@ export const vocab: VocabEntry[] = [
     unit: 2,
     examWeight: 1,
   },
+  {
+    id: 'fronti',
+    term: 'fronti',
+    gloss: 'las frentes',
+    category: 'body',
+    gender: 'f',
+    article: 'le',
+    unit: 2,
+    examWeight: 1,
+  },
 
   {
     id: 'spalla',
@@ -186,6 +323,16 @@ export const vocab: VocabEntry[] = [
     unit: 2,
     examWeight: 1,
   },
+  {
+    id: 'spalle',
+    term: 'spalle',
+    gloss: 'los hombros',
+    category: 'body',
+    gender: 'f',
+    article: 'le',
+    unit: 2,
+    examWeight: 1,
+  },
 
   {
     id: 'dito',
@@ -194,7 +341,16 @@ export const vocab: VocabEntry[] = [
     category: 'body',
     gender: 'm',
     article: 'il',
-    plural: 'le dita',
+    unit: 2,
+    examWeight: 1,
+  },
+  {
+    id: 'dita',
+    term: 'dita',
+    gloss: 'los dedos',
+    category: 'body',
+    gender: 'f',
+    article: 'le',
     unit: 2,
     examWeight: 1,
   },
@@ -209,6 +365,16 @@ export const vocab: VocabEntry[] = [
     unit: 2,
     examWeight: 1,
   },
+  {
+    id: 'teste',
+    term: 'teste',
+    gloss: 'las cabezas',
+    category: 'body',
+    gender: 'f',
+    article: 'le',
+    unit: 2,
+    examWeight: 1,
+  },
 
   {
     id: 'faccia',
@@ -217,6 +383,16 @@ export const vocab: VocabEntry[] = [
     category: 'body',
     gender: 'f',
     article: 'la',
+    unit: 2,
+    examWeight: 1,
+  },
+  {
+    id: 'facce',
+    term: 'facce',
+    gloss: 'las caras',
+    category: 'body',
+    gender: 'f',
+    article: 'le',
     unit: 2,
     examWeight: 1,
   },
