@@ -288,7 +288,11 @@ h2 {
   background: var(--red-soft);
 }
 
-/* Inline variant — the input sits inside the hero/task line where the blank is. */
+/* Inline variant — the input sits inside the hero/task line where the blank is.
+   `line-height` is set explicitly (not inherited) because the surrounding
+   `.prompt-hero`/`.prompt-task` use a tight headline line-height (1.06–1.2) that
+   crops ascenders/descenders when applied to an <input>'s text — long
+   placeholders like "il · lo · la · l'" got clipped against the border. */
 .answer-input.inline {
   display: inline-block;
   width: auto;
@@ -297,8 +301,9 @@ h2 {
   vertical-align: baseline;
   font-size: inherit;
   font-weight: inherit;
-  min-height: 1.5em;
-  padding: 2px 12px;
+  line-height: 1.3;
+  min-height: 1.6em;
+  padding: 4px 12px;
 }
 
 /* ── Unified prompt-card anatomy (badges → hero → meaning → task → answer) ──── */
