@@ -471,4 +471,69 @@ export const vocab: VocabEntry[] = [
     unit: 2,
     examWeight: 2,
   },
+
+  // ────────────────────────────────────────────────────────────────────────────
+  // Unidades de tiempo (category 'calendar'). Nombres generales del calendario, con
+  // compañero singular/plural en los más frecuentes. «fine settimana» y «weekend»
+  // son masculinos INVARIABLES (i fine settimana / i weekend). examWeight 1: no
+  // entran en el examen del Módulo 1, solo práctica.
+  // ────────────────────────────────────────────────────────────────────────────
+  { id: 'giorno', term: 'giorno', gloss: 'el día', category: 'calendar', gender: 'm', article: 'il', unit: 2, examWeight: 1 },
+  { id: 'giorni', term: 'giorni', gloss: 'los días', category: 'calendar', gender: 'm', article: 'i', unit: 2, examWeight: 1 },
+  { id: 'settimana', term: 'settimana', gloss: 'la semana', category: 'calendar', gender: 'f', article: 'la', unit: 2, examWeight: 1 },
+  { id: 'settimane', term: 'settimane', gloss: 'las semanas', category: 'calendar', gender: 'f', article: 'le', unit: 2, examWeight: 1 },
+  { id: 'fine-settimana', term: 'fine settimana', gloss: 'el fin de semana', category: 'calendar', gender: 'm', article: 'il', unit: 2, examWeight: 1 },
+  { id: 'weekend', term: 'weekend', gloss: 'el fin de semana (weekend)', category: 'calendar', gender: 'm', article: 'il', unit: 2, examWeight: 1 },
+  { id: 'mese', term: 'mese', gloss: 'el mes', category: 'calendar', gender: 'm', article: 'il', unit: 2, examWeight: 1 },
+  { id: 'mesi', term: 'mesi', gloss: 'los meses', category: 'calendar', gender: 'm', article: 'i', unit: 2, examWeight: 1 },
+  { id: 'anno', term: 'anno', gloss: 'el año', category: 'calendar', gender: 'm', article: "l'", unit: 2, examWeight: 1 },
+  { id: 'anni', term: 'anni', gloss: 'los años', category: 'calendar', gender: 'm', article: 'gli', unit: 2, examWeight: 1 },
+  { id: 'secolo', term: 'secolo', gloss: 'el siglo', category: 'calendar', gender: 'm', article: 'il', unit: 2, examWeight: 1 },
+  { id: 'ora', term: 'ora', gloss: 'la hora', category: 'calendar', gender: 'f', article: "l'", unit: 2, examWeight: 1 },
+  { id: 'ore', term: 'ore', gloss: 'las horas', category: 'calendar', gender: 'f', article: 'le', unit: 2, examWeight: 1 },
+  { id: 'minuto', term: 'minuto', gloss: 'el minuto', category: 'calendar', gender: 'm', article: 'il', unit: 2, examWeight: 1 },
+  { id: 'minuti', term: 'minuti', gloss: 'los minutos', category: 'calendar', gender: 'm', article: 'i', unit: 2, examWeight: 1 },
+
+  // ────────────────────────────────────────────────────────────────────────────
+  // Los 12 meses (category 'months'). TODOS masculinos y en MINÚSCULA. aprile,
+  // agosto y ottobre empiezan por vocal → artículo «l'».
+  // ────────────────────────────────────────────────────────────────────────────
+  { id: 'gennaio', term: 'gennaio', gloss: 'enero', category: 'months', gender: 'm', article: 'il', unit: 2, examWeight: 1 },
+  { id: 'febbraio', term: 'febbraio', gloss: 'febrero', category: 'months', gender: 'm', article: 'il', unit: 2, examWeight: 1 },
+  { id: 'marzo', term: 'marzo', gloss: 'marzo', category: 'months', gender: 'm', article: 'il', unit: 2, examWeight: 1 },
+  { id: 'aprile', term: 'aprile', gloss: 'abril', category: 'months', gender: 'm', article: "l'", unit: 2, examWeight: 1 },
+  { id: 'maggio', term: 'maggio', gloss: 'mayo', category: 'months', gender: 'm', article: 'il', unit: 2, examWeight: 1 },
+  { id: 'giugno', term: 'giugno', gloss: 'junio', category: 'months', gender: 'm', article: 'il', unit: 2, examWeight: 1 },
+  { id: 'luglio', term: 'luglio', gloss: 'julio', category: 'months', gender: 'm', article: 'il', unit: 2, examWeight: 1 },
+  { id: 'agosto', term: 'agosto', gloss: 'agosto', category: 'months', gender: 'm', article: "l'", unit: 2, examWeight: 1 },
+  { id: 'settembre', term: 'settembre', gloss: 'septiembre', category: 'months', gender: 'm', article: 'il', unit: 2, examWeight: 1 },
+  { id: 'ottobre', term: 'ottobre', gloss: 'octubre', category: 'months', gender: 'm', article: "l'", unit: 2, examWeight: 1 },
+  { id: 'novembre', term: 'novembre', gloss: 'noviembre', category: 'months', gender: 'm', article: 'il', unit: 2, examWeight: 1 },
+  { id: 'dicembre', term: 'dicembre', gloss: 'diciembre', category: 'months', gender: 'm', article: 'il', unit: 2, examWeight: 1 },
+
+  // ────────────────────────────────────────────────────────────────────────────
+  // Las 4 estaciones (category 'seasons'). «estate» es FEMENINA (l'estate); autunno
+  // e inverno son masculinos (l'autunno, l'inverno); primavera femenina (la primavera).
+  // ────────────────────────────────────────────────────────────────────────────
+  { id: 'primavera', term: 'primavera', gloss: 'la primavera', category: 'seasons', gender: 'f', article: 'la', unit: 2, examWeight: 1 },
+  { id: 'estate', term: 'estate', gloss: 'el verano', category: 'seasons', gender: 'f', article: "l'", unit: 2, examWeight: 1 },
+  { id: 'autunno', term: 'autunno', gloss: 'el otoño', category: 'seasons', gender: 'm', article: "l'", unit: 2, examWeight: 1 },
+  { id: 'inverno', term: 'inverno', gloss: 'el invierno', category: 'seasons', gender: 'm', article: "l'", unit: 2, examWeight: 1 },
+
+  // ────────────────────────────────────────────────────────────────────────────
+  // Momentos del día (category 'dayparts').
+  // ────────────────────────────────────────────────────────────────────────────
+  { id: 'mattina', term: 'mattina', gloss: 'la mañana (~6–12 h)', category: 'dayparts', gender: 'f', article: 'la', unit: 2, examWeight: 1 },
+  { id: 'pomeriggio', term: 'pomeriggio', gloss: 'la tarde (~12–18 h)', category: 'dayparts', gender: 'm', article: 'il', unit: 2, examWeight: 1 },
+  { id: 'sera', term: 'sera', gloss: 'la tarde-noche (~18–24 h)', category: 'dayparts', gender: 'f', article: 'la', unit: 2, examWeight: 1 },
+  { id: 'notte', term: 'notte', gloss: 'la noche (~24–6 h)', category: 'dayparts', gender: 'f', article: 'la', unit: 2, examWeight: 1 },
+
+  // ────────────────────────────────────────────────────────────────────────────
+  // Adverbios de tiempo (category 'timeadv'). Son invariables → sin género/artículo.
+  // ────────────────────────────────────────────────────────────────────────────
+  { id: 'oggi', term: 'oggi', gloss: 'hoy', category: 'timeadv', unit: 2, examWeight: 1 },
+  { id: 'ieri', term: 'ieri', gloss: 'ayer', category: 'timeadv', unit: 2, examWeight: 1 },
+  { id: 'domani', term: 'domani', gloss: 'mañana', category: 'timeadv', unit: 2, examWeight: 1 },
+  { id: 'dopodomani', term: 'dopodomani', gloss: 'pasado mañana', category: 'timeadv', unit: 2, examWeight: 1 },
+  { id: 'altro-ieri', term: "l'altro ieri", gloss: 'antier / anteayer', category: 'timeadv', unit: 2, examWeight: 1 },
 ];

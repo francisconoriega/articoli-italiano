@@ -8,6 +8,7 @@
  */
 import type { Item, ItemProgress, PracticeMode } from '../types'
 import { selectionWeight } from './mastery'
+import { isCalendarTopic } from './scheduler'
 
 /** A miss scheduled to resurface; `due` is measured in session-answered count (like legacy). */
 export interface RecentMiss {
@@ -32,11 +33,17 @@ export function poolForMode(items: Item[], mode: PracticeMode): Item[] {
     case 'numbers':
       return items.filter((i) => i.kind === 'number')
     case 'vocab':
+      // Calendar and body-parts each get their own dedicated lane (below), so exclude
+      // both here — same reasoning as the existing vocab:body exclusion.
       return items.filter(
-        (i) => (i.kind === 'vocab' && i.topic !== 'vocab:body') || i.kind === 'pronoun',
+        (i) =>
+          (i.kind === 'vocab' && i.topic !== 'vocab:body' && !isCalendarTopic(i.topic)) ||
+          i.kind === 'pronoun',
       )
     case 'body':
       return items.filter((i) => i.kind === 'vocab' && i.topic === 'vocab:body')
+    case 'calendar':
+      return items.filter((i) => i.kind === 'vocab' && isCalendarTopic(i.topic))
     case 'time':
       return items.filter((i) => i.kind === 'tell-time')
     case 'functional':

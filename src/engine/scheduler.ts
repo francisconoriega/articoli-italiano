@@ -278,9 +278,27 @@ export interface CategoryInfo {
 }
 
 /** Display order used to break sort ties between categories. */
-const CATEGORY_ORDER = ['verbos', 'numeros', 'hora', 'articulos', 'vocab', 'cuerpo', 'expresiones', 'pronombres', 'examen', 'otros']
+const CATEGORY_ORDER = ['verbos', 'numeros', 'hora', 'articulos', 'vocab', 'cuerpo', 'calendario', 'expresiones', 'pronombres', 'examen', 'otros']
 
 const CATEGORY_STATE_RANK: Record<CategoryState, number> = { active: 0, new: 1, mastered: 2 }
+
+/**
+ * Topics that make up the "Calendario" lane: days/months/seasons/dayparts/time-adverbs
+ * and general calendar nouns. Shared with engine/select.ts so the "Calendario" practice
+ * mode filters the EXACT same items the sidebar groups under the Calendario category.
+ */
+const CALENDAR_TOPICS = new Set([
+  'vocab:days',
+  'vocab:calendar',
+  'vocab:months',
+  'vocab:seasons',
+  'vocab:dayparts',
+  'vocab:timeadv',
+])
+
+export function isCalendarTopic(topic: string): boolean {
+  return CALENDAR_TOPICS.has(topic)
+}
 
 /** Map a scheduler topic to its high-level category key (verbs of motion fold into verbos). */
 export function categoryKeyOf(topic: string): string {
@@ -289,6 +307,7 @@ export function categoryKeyOf(topic: string): string {
   if (topic === 'time') return 'hora'
   if (topic.startsWith('article:')) return 'articulos'
   if (topic === 'vocab:body') return 'cuerpo'
+  if (isCalendarTopic(topic)) return 'calendario'
   if (topic.startsWith('vocab:')) return 'vocab'
   if (topic === 'functional') return 'expresiones'
   if (topic === 'pronoun') return 'pronombres'

@@ -255,7 +255,11 @@ export function buildChoices(
   const correct = item.answer
   let candidates: string[] = []
 
-  if (item.kind === 'essere-avere') {
+  if (item.distractors && item.distractors.length) {
+    // Authored distractors win: grammar-cloze items whose answer isn't a vocab term
+    // (a preposition/article/agreement form) supply their own tight, plausible set.
+    candidates = item.distractors.slice()
+  } else if (item.kind === 'essere-avere') {
     candidates = allItems
       .filter((i) => i !== item && (i.skills.includes('essere') || i.skills.includes('avere')))
       .map((i) => i.answer)
@@ -319,6 +323,23 @@ export function buildChoices(
       .sort((a, b) => Math.abs((a.prompt.figure as number) - figure) - Math.abs((b.prompt.figure as number) - figure))
       .slice(0, (count - 1) * 2) // keep only the closest as the distractor pool
       .map((i) => i.answer)
+  } else if (item.kind === 'vocab') {
+    // Tight distractors: other terms of the SAME category (topic "vocab:<cat>") — other
+    // months for a month, other days for a day — so the contrast is thematic, not a
+    // random noun from an unrelated field. Fall back to any vocab if the category is small.
+    // Exclude grammar-cloze items (those carry their OWN authored distractors): their
+    // answers are prepositions/articles/agreement forms, not vocabulary terms, so they
+    // must never leak into a recall item's option set (e.g. "il" among the weekdays).
+    const isVocabWord = (i: Item): boolean => i.kind === 'vocab' && !i.distractors
+    const sameTopic = allItems
+      .filter((i) => i !== item && isVocabWord(i) && i.topic === item.topic)
+      .map((i) => i.answer)
+    candidates = sameTopic
+    if (candidates.length < count - 1) {
+      candidates = candidates.concat(
+        allItems.filter((i) => isVocabWord(i) && i.topic !== item.topic).map((i) => i.answer),
+      )
+    }
   } else {
     candidates = allItems.filter((i) => i.kind === item.kind).map((i) => i.answer)
   }
