@@ -150,6 +150,13 @@ export interface Item {
   answer: string;
   /** Additional accepted spellings (genuine alternates only — not accent variants). */
   accept?: string[];
+  /**
+   * Authored multiple-choice distractors, used verbatim when present (the generic
+   * kind-based distractor logic is skipped). For grammar-cloze items whose answer is
+   * NOT a vocabulary term (a preposition/article/agreement form), where the same-kind
+   * pool holds nothing plausible. Keep them tight — same category as the answer.
+   */
+  distractors?: string[];
   /** Small ES-MX gloss shown as an immersive hint. */
   gloss?: string;
   /** Full ES-MX sentence translation, shown alongside `gloss` when `gloss` is only a
@@ -272,6 +279,7 @@ export type PracticeMode =
   | 'numbers'
   | 'vocab'
   | 'body'
+  | 'calendar'
   | 'agreement'
   | 'time'
   | 'functional'
@@ -487,6 +495,9 @@ export interface SentenceEntry {
   /** Canonical accented answer. */
   answer: string;
   accept?: string[];
+  /** Authored MC distractors (see Item.distractors) — for grammar-cloze drills whose
+   *  answer is not a vocab term, so the generic distractor pool has nothing plausible. */
+  distractors?: string[];
   lemma?: string;
   person?: Person;
   gloss?: string;

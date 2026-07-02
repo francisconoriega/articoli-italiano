@@ -296,16 +296,45 @@ function numbersToItems(ranges: NumberRange[]): Item[] {
   return items
 }
 
-/** Human hint per vocab category shown under the Spanish cue. */
-function vocabCategoryHint(category: string): string {
+/**
+ * Category label shown as the FIRST badge on a vocab card (the classifier chip, like
+ * "Determinado" on an article). Exported so the render layer can badge the relational
+ * clue drills (kind 'vocab' from lessons.ts) the same way, from their topic.
+ */
+export function vocabCategoryLabel(category: string): string {
   switch (category) {
     case 'body':
-      return 'parte del cuerpo'
+      return 'Parte del cuerpo'
     case 'days':
-      return 'día de la semana'
+      return 'Día de la semana'
+    case 'calendar':
+      return 'Unidad de tiempo'
+    case 'months':
+      return 'Mes del año'
+    case 'seasons':
+      return 'Estación'
+    case 'dayparts':
+      return 'Momento del día'
+    case 'timeadv':
+      return 'Expresión de tiempo'
     default:
       return category
   }
+}
+
+/**
+ * Vocab card badges — same visual language as the article card: category, then number
+ * (Singular/Plural, derived from the definite article), then gender. Number/gender are
+ * omitted for entries that carry no article/gender (e.g. time adverbs: oggi, ieri).
+ */
+function vocabBadges(entry: VocabEntry): string[] {
+  const badges = [vocabCategoryLabel(entry.category)]
+  const a = entry.article
+  if (a === 'i' || a === 'gli' || a === 'le') badges.push('Plural')
+  else if (a === 'il' || a === 'lo' || a === 'la' || a === "l'") badges.push('Singular')
+  if (entry.gender === 'm') badges.push('Masculino')
+  else if (entry.gender === 'f') badges.push('Femenino')
+  return badges
 }
 
 function vocabToItems(entry: VocabEntry): Item[] {
@@ -314,9 +343,11 @@ function vocabToItems(entry: VocabEntry): Item[] {
       id: `vocab:${entry.category}:${entry.id}`,
       kind: 'vocab',
       topic: `vocab:${entry.category}`,
+      // Category/number/gender live in badges now (like the article card); the old
+      // "… — escribe en italiano" hint is dropped as redundant noise.
       prompt: {
         text: entry.gloss,
-        hint: `${vocabCategoryHint(entry.category)} — escribe en italiano`,
+        badges: vocabBadges(entry),
       },
       answer: entry.term,
       skills: [`vocab:${entry.category}`],
@@ -380,6 +411,7 @@ function sentenceToItems(entry: SentenceEntry): Item[] {
       prompt: { text: entry.text, lemma: entry.lemma, person: entry.person },
       answer: entry.answer,
       accept: entry.accept,
+      distractors: entry.distractors,
       gloss: entry.gloss,
       translation: entry.translation,
       skills: skills.length ? skills : ['sentence'],

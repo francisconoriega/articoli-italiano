@@ -127,6 +127,29 @@ const functionalRules: Record<string, ExplanationRule> = {
   },
 }
 
+const calendarRules: Record<string, ExplanationRule> = {
+  day_article_habitual: {
+    title: 'il lunedì (los lunes) vs lunedì',
+    text: 'Con **artículo**, «il lunedì» = acción **habitual** (todos los lunes): *il lunedì vado in palestra*. **Sin** artículo, «lunedì» solo = **este/próximo** lunes: *lunedì ho un esame*. (En español «el lunes» es ambiguo; el italiano lo distingue con el artículo.) Días de la semana, meses y estaciones van siempre en **minúscula**.',
+  },
+  month_preposition: {
+    title: 'Meses: a / in',
+    text: 'Para «en + mes» se usa **a** o **in** (equivalentes): *a gennaio*, *in agosto*. Los meses son **masculinos** y en **minúscula**.',
+  },
+  season_preposition: {
+    title: 'Estaciones: in',
+    text: 'Para «en + estación» se usa **in**: *in primavera*, *in autunno*, *in inverno*. El verano admite *in estate* o *d\'estate*. Ojo: **l\'estate es femenina**; *l\'autunno* y *l\'inverno* masculinos.',
+  },
+  time_next_last: {
+    title: 'prossimo / scorso',
+    text: '**prossimo** = próximo, **scorso** = pasado. Son adjetivos y **concuerdan** con el nombre: *la settimana **prossima***, *il mese **prossimo***, *l\'anno **scorso***, *la settimana **scorsa***.',
+  },
+  date_format: {
+    title: 'Fechas: il + número + mes',
+    text: 'La fecha se forma con **il + número cardinal + mes**: *il **due** giugno*, *il **venticinque** dicembre*. **Excepción**: el día **1** usa el ordinal **primo**: *il **primo** maggio* (no «uno»).',
+  },
+}
+
 const agreementRules: Record<string, ExplanationRule> = {
   agreement: {
     title: 'Concordancia (género y número)',
@@ -143,6 +166,7 @@ export const explanationRules: Record<string, ExplanationRule> = {
   ...motionRules,
   ...timeRules,
   ...functionalRules,
+  ...calendarRules,
   ...agreementRules,
 }
 

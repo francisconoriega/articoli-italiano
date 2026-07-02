@@ -11,6 +11,7 @@
 import type { Item } from '../types'
 import { BLANK } from '../types'
 import { tonicSplit } from '../engine/syllables'
+import { vocabCategoryLabel } from '../engine/items'
 
 export interface PromptView {
   badges: string[]
@@ -29,8 +30,46 @@ export interface PromptView {
   answerSlot: 'hero' | 'task' | 'below'
 }
 
+/**
+ * A leading "exercise type" badge derived from the item's kind, so every card announces
+ * what it is (e.g. "Pronombres", "La hora") — the same badge chip the article/verb cards
+ * already use. Returns null for article/number/agreement, whose existing badges
+ * (Determinado/Cardinal/Concordancia…) already name the family; a vocab RECALL card is
+ * self-labelled by its "… — escribe en italiano" hint, so only the grammar-cloze variant
+ * (a blank inside the sentence) gets a "Gramática" badge here.
+ */
+function exerciseTypeBadge(item: Item): string | null {
+  switch (item.kind) {
+    case 'pronoun':
+      return 'Pronombres'
+    case 'tell-time':
+      return 'La hora'
+    case 'functional-choice':
+      return 'Expresión'
+    case 'verb-choice':
+      return 'Movimiento'
+    case 'verb-conjugation':
+      return 'Verbo'
+    case 'essere-avere':
+      return 'Essere / Avere'
+    case 'vocab':
+      if (item.prompt.text.includes(BLANK)) return 'Gramática'
+      // Recall cards already carry authored category/number/gender badges (set in
+      // vocabToItems) — don't duplicate. Relational clue drills (kind 'vocab' from
+      // lessons.ts, no authored badges) get just the category badge from their topic.
+      if (item.prompt.badges && item.prompt.badges.length) return null
+      return item.topic.startsWith('vocab:') ? vocabCategoryLabel(item.topic.slice(6)) : null
+    default:
+      return null
+  }
+}
+
 export function promptView(item: Item): PromptView {
-  const badges = item.prompt.badges ?? []
+  const typeBadge = exerciseTypeBadge(item)
+  const authored = item.prompt.badges ?? []
+  // Prepend the type badge (skip if the authored badges already lead with it).
+  const badges =
+    typeBadge && !authored.includes(typeBadge) ? [typeBadge, ...authored] : authored
   const figure = item.prompt.figure
 
   // Number lane — the figure is the hero (ordinals get a degree mark for clarity).
@@ -110,6 +149,20 @@ export function badgeTitle(badge: string): string {
       return 'Excepción de escritura (elisión): ventuno, ventotto, sessantotto…'
     case 'Concordancia':
       return 'Concordancia: el adjetivo copia el género y número del nombre.'
+    case 'Pronombres':
+      return 'Pronombres personales: io, tu, lui/lei, noi, voi, loro.'
+    case 'La hora':
+      return 'Decir la hora: «che ore sono?» → è l’una / sono le tre…'
+    case 'Expresión':
+      return 'Expresión útil: elige la respuesta que encaja en la conversación.'
+    case 'Movimiento':
+      return 'Verbos de movimiento: andare / venire / uscire — elige y conjuga.'
+    case 'Verbo':
+      return 'Conjugación verbal: escribe el verbo en la persona indicada.'
+    case 'Essere / Avere':
+      return 'essere o avere: elige el auxiliar correcto según el contexto.'
+    case 'Gramática':
+      return 'Regla gramatical: completa el hueco con la forma correcta.'
     default:
       return badge
   }

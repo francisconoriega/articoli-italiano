@@ -43,7 +43,7 @@
   const now = () => Date.now()
 
   // The 9 practice modes, in display order — owned here, passed to the settings drawer.
-  const MODES: PracticeMode[] = ['mixed', 'verbs', 'articles', 'numbers', 'vocab', 'body', 'agreement', 'time', 'functional']
+  const MODES: PracticeMode[] = ['mixed', 'verbs', 'articles', 'numbers', 'vocab', 'body', 'calendar', 'agreement', 'time', 'functional']
 
   // ── Shell navigation & responsive state ───────────────────────────────────
   // Mobile splits the UI into two screens (the tab bar toggles them); desktop shows both.

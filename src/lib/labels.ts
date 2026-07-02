@@ -27,6 +27,7 @@ export function modeLabel(mode: PracticeMode): string {
     numbers: 'Números',
     vocab: 'Vocabulario',
     body: 'Partes del cuerpo',
+    calendar: 'Calendario',
     agreement: 'Concordancia',
     time: 'La hora',
     functional: 'Expresiones',
@@ -35,15 +36,24 @@ export function modeLabel(mode: PracticeMode): string {
   return map[mode]
 }
 
+/** ES-MX label for a vocab category key (the part after "vocab:"). */
+function vocabCategoryLabel(c: string): string {
+  const map: Record<string, string> = {
+    body: 'partes del cuerpo',
+    days: 'días de la semana',
+    calendar: 'unidades de tiempo',
+    months: 'meses del año',
+    seasons: 'estaciones',
+    dayparts: 'momentos del día',
+    timeadv: 'expresiones de tiempo',
+  }
+  return map[c] ?? c
+}
+
 /** Human ES-MX label for a scheduler topic (e.g. "verb:fare" → "verbo fare"). */
 export function topicLabel(topic: string): string {
   if (topic.startsWith('verb:')) return `verbo ${topic.slice(5)}`
-  if (topic.startsWith('vocab:')) {
-    const c = topic.slice(6)
-    if (c === 'body') return 'partes del cuerpo'
-    if (c === 'days') return 'días de la semana'
-    return c
-  }
+  if (topic.startsWith('vocab:')) return vocabCategoryLabel(topic.slice(6))
   if (topic === 'pronoun') return 'pronombres'
   if (topic === 'motion') return 'movimiento (andare/venire/uscire)'
   if (topic === 'time') return 'la hora'
@@ -112,6 +122,7 @@ export function categoryLabel(key: string): string {
     articulos: 'Artículos',
     vocab: 'Vocabulario',
     cuerpo: 'Partes del cuerpo',
+    calendario: 'Calendario',
     expresiones: 'Expresiones',
     pronombres: 'Pronombres',
     examen: 'Frases del examen',
@@ -148,12 +159,7 @@ export function skillLabel(skill: string): string {
     if (n === 'elision') return 'excepciones (elisión)'
     return `números (${n})`
   }
-  if (skill.startsWith('vocab:')) {
-    const c = skill.slice(6)
-    if (c === 'body') return 'partes del cuerpo'
-    if (c === 'days') return 'días de la semana'
-    return c
-  }
+  if (skill.startsWith('vocab:')) return vocabCategoryLabel(skill.slice(6))
   if (skill.startsWith('time:')) return 'la hora'
   if (skill.startsWith('functional:')) return 'expresiones útiles'
   if (skill.startsWith('agreement:')) {
